@@ -155,15 +155,77 @@ impl Nes6502 {
 
     /// Reset Interrupt - forces the CPU into a known state
     fn reset(&mut self) {
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
+        self.stkp = 0xFD;
+        self.status = 0x00 | Flags6502::U as u8;
 
+        // this address contains the address we want to set our program counter to
+        self.addr_abs = 0xFFFC;
+        // get lo byte of the address
+        let lo = self.read(self.addr_abs + 0) as u16;
+        // get hi byte of the address
+        let hi = self.read(self.addr_abs + 1) as u16;
+
+        self.pc = (hi << 8) | lo;
+
+        self.addr_rel = 0x0000;
+        self.addr_abs = 0x0000;
+        self.fetched = 0x00;
+
+        self.cycles = 8;
     }
     /// Interrupt Request - Executes an instruction at a specific location
     fn irq(&mut self) {
+        // if interrupts are enabled
+        if self.get_flag(Flags6502::I) == 0 {
+            // push the program counter to the stack
+            self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+            self.stkp -= 1;
+            self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+            self.stkp -= 1;
 
+            self.set_flag(Flags6502::B, false);
+            self.set_flag(Flags6502::U, true);
+            self.set_flag(Flags6502::I, true);
+            // write the status to the stack
+            self.write(0x0100 + self.stkp as u16, self.status);
+            self.stkp -= 1;
+
+            // get the value of the new program counter; forces the program to jump to a 
+            // known location set by the programmer to handle the interupt.
+            self.addr_abs = 0xFFFE;
+            let lo = self.read(self.addr_abs + 0) as u16;
+            let hi = self.read(self.addr_abs + 1) as u16;
+            self.pc = (hi << 8) | lo;
+
+            self.cycles = 7;
+        }
     }
     /// Non-Maskable Interrupt Request - Same as irq but cannot be disabled
     fn nmi(&mut self) {
+        // push the program counter to the stack
+        self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.stkp -= 1;
+        self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.stkp -= 1;
 
+        self.set_flag(Flags6502::B, false);
+        self.set_flag(Flags6502::U, true);
+        self.set_flag(Flags6502::I, true);
+        // write the status to the stack
+        self.write(0x0100 + self.stkp as u16, self.status);
+        self.stkp -= 1;
+
+        // get the value of the new program counter; forces the program to jump to a 
+        // known location set by the programmer to handle the interupt.
+        self.addr_abs = 0xFFFA;
+        let lo = self.read(self.addr_abs + 0) as u16;
+        let hi = self.read(self.addr_abs + 1) as u16;
+        self.pc = (hi << 8) | lo;
+
+        self.cycles = 7;
     }
 
     /// This function fetches the data used by the instruction into a convenient
@@ -197,11 +259,22 @@ impl Nes6502 {
     }
 
     // Convenience functions to access status register
-    fn get_flag(&self, f: Flags6502) {
-
+    /// Returns the value of a specific bit of the status register
+    fn get_flag(&self, f: Flags6502) -> u8 {
+        return if (self.status & f as u8) > 0 {
+            1
+        } else {
+            0
+        }
     }
-    fn set_flag(&self, f: Flags6502, b: bool) {
-
+    /// Sets of clears a bit of the status register
+    /// If v is true set a bit, other wise clear the bit
+    fn set_flag(&mut self, f: Flags6502, v: bool) {
+        if v {
+            self.status |= f as u8;
+        } else {
+            self.status &= !(f as u8);
+        }
     }    
 
     // Addressing modes, the 6502 has many addressing modes which are used
@@ -426,7 +499,7 @@ impl Nes6502 {
         // move program counter to next insturction
         self.pc += 1;
         // Check if the address is signed
-        if self.addr_rel & 0x80 == 1 {
+        if (self.addr_rel & 0x80) != 0 {
             // if it is signed, set the high byte of the address
             // to all ones
             self.addr_rel |= 0xFF00;
@@ -442,72 +515,236 @@ impl Nes6502 {
     // conditions combined with certain addressing modes.
 
     /// add with carry
-    fn ADC(&self) -> u8 {
-        todo!()
+    /// This instruction is used to add a value to the accumulator and a carry bit. If
+    /// the result is > 255 there is an overflow setting the carry bit. This allows you
+    /// to chain together ADC instructions to add numbers larger than 8 bits. This in 
+    /// itself is simple, however the 6502 supports the concepts of negativity/positivity
+    /// and signed overflow
+    /// 
+    /// 10000100 = 128 + 4 = 132 in normal circumstance we know this as unsigned and it
+    /// allows us to represent numbers between 0 and 255. The 6502 can also interpret this
+    /// as something else, if we assume those 8 bits represent the range -128 to +127 it
+    /// has become signed
+    /// 
+    /// Since 132 > 127 it effectively wraps around, through -128 to -124. The wraparound
+    /// is called overflow and this is a useful to know as it indicates that the calculation
+    /// has gone outside of the permissable range, and therefore no longer makes numeric
+    /// sense
+    /// 
+    ///  10000100 = 132 or -124
+    /// +00010001 = +17 or +17
+    ///  ========   ===    ====
+    ///  10010101 = 149 or -107
+    /// 
+    /// In principle under the -128 to 127 range:
+    /// 10000000 = -128, 11111111 = -1, 00000000 = 0, 00000001 = +1, 00000001 = +127
+    /// therefore negative numbers have the most significant set, positive numbers do not
+    /// 
+    /// To assist us the 6502 can set the overflow flag, if the result of the addition has
+    /// wrapped around. V <- ~(A^M) & A^(A+M+C)
+    /// 
+    /// A  M  R | V | A^R | A^M |~(A^M) | 
+    /// 0  0  0 | 0 |  0  |  0  |   1   |
+    /// 0  0  1 | 1 |  1  |  0  |   1   |
+    /// 0  1  0 | 0 |  0  |  1  |   0   |
+    /// 0  1  1 | 0 |  1  |  1  |   0   |  so V = ~(A^M) & (A^R)
+    /// 1  0  0 | 0 |  1  |  1  |   0   |
+    /// 1  0  1 | 0 |  0  |  1  |   0   |
+    /// 1  1  0 | 1 |  1  |  0  |   1   |
+    /// 1  1  1 | 0 |  0  |  0  |   1   |
+    /// We can see how the above equation calculates V, based on A, M and R. V was chosen
+    /// based on the following hypothesis:
+    ///       Positive Number + Positive Number = Negative Result -> Overflow
+    ///       Negative Number + Negative Number = Positive Result -> Overflow
+    ///       Positive Number + Negative Number = Either Result -> Cannot Overflow
+    ///       Positive Number + Positive Number = Positive Result -> OK! No Overflow
+    ///       Negative Number + Negative Number = Negative Result -> OK! NO Overflow
+    fn ADC(&mut self) -> u8 {
+        // fetch the data we are adding to the accumulator
+        self.fetch();
+        
+        let temp: u16 = self.a as u16 + self.fetched as u16 + self.get_flag(Flags6502::C) as u16;
+        // set the carry bit if temp has overflowed
+        self.set_flag(Flags6502::C, temp > 255);
+        // set the zero flag if temp is empty
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0);
+        // set the overflow flag
+        self.set_flag(Flags6502::V, ((!(self.a as u16 ^ self.fetched as u16 & self.a as u16 ^ temp)) & 0x0080) != 0);
+        // set the negative flag if bit 7 is turned on
+        self.set_flag(Flags6502::N, (temp & 0x80) != 0);
+
+        // load the result into the accumulator
+        self.a = temp as u8 & 0x00FF;
+
+        1
     }
     /// and (with accumulator)
-    fn AND(&self) -> u8 {
-        todo!()
+    fn AND(&mut self) -> u8 {
+        // fetch the data we are adding to the accumulator
+        self.fetch();
+        
+        self.a = self.a & self.fetched;
+        // if the result of the AND resulted in all the bits 
+        // being zero set the zero flag
+        self.set_flag(Flags6502::Z,  self.a == 0x00);
+        // set the negative flag if bit 7 is equal to one
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+        // needs an additional clock cycle
+        1
     }
     /// arithmetic shift left
     fn ASL(&self) -> u8 {
-        todo!()
-    }
-    /// branch on carry clear
-    fn BCC(&self) -> u8 {
-        todo!()
-    }
-    /// branch on carry set
-    fn BCS(&self) -> u8 {
-        todo!()
-    }
-    /// branch on equal (zero set)
-    fn BEQ(&self) -> u8 {
         todo!()
     }
     /// bit test
     fn BIT(&self) -> u8 {
         todo!()
     }
-    /// branch on minus (negative set)
-    fn BMI(&self) -> u8 {
-        todo!()
-    }
-    /// branch on not equal (zero clear)
-    fn BNE(&self) -> u8 {
-        todo!()
-    }
-    /// branch on plus (negative clear)
-    fn BPL(&self) -> u8 {
-        todo!()
-    }
     /// break / interrupt
     fn BRK(&self) -> u8 {
         todo!()
     }
+    /// branch on carry clear
+    fn BCC(&mut self) -> u8 {
+        // check if the carry bit is clear
+        if self.get_flag(Flags6502::C) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            // give an additional cycle if the page has changed
+            if self.addr_abs & 0xFF00 != self.pc & 0xFF00 {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        0
+    }
+    /// branch on carry set
+    fn BCS(&mut self) -> u8 {
+        // check if the carry bit set
+        if self.get_flag(Flags6502::C) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+
+        0
+    }
+    /// branch on equal (zero set)
+    fn BEQ(&mut self) -> u8 {
+        if self.get_flag(Flags6502::Z) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        
+        0
+    }
+    /// branch on minus (negative set)
+    fn BMI(&mut self) -> u8 {
+        if self.get_flag(Flags6502::N) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        
+        0
+    }
+    /// branch on not equal (zero clear)
+    fn BNE(&mut self) -> u8 {
+        if self.get_flag(Flags6502::Z) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        
+        0
+    }
+    /// branch on plus (negative clear)
+    fn BPL(&mut self) -> u8 {
+        if self.get_flag(Flags6502::N) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        
+        0
+    }
     /// branch on overflow clear
-    fn BVC(&self) -> u8 {
-        todo!()
+    fn BVC(&mut self) -> u8 {
+        if self.get_flag(Flags6502::V) == 0 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        
+        0
     }
     /// branch on overflow set
-    fn BVS(&self) -> u8 {
-        todo!()
+    fn BVS(&mut self) -> u8 {
+        if self.get_flag(Flags6502::V) == 1 {
+            self.cycles += 1;
+            self.addr_abs = self.pc + self.addr_rel;
+
+            if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
+                self.cycles += 1;
+            }
+
+            self.pc = self.addr_abs;
+        }
+        
+        0
     }
     /// clear carry
-    fn CLC(&self) -> u8 {
-        todo!()
+    fn CLC(&mut self) -> u8 {
+        self.set_flag(Flags6502::C, false);
+        0
     }
     /// clear decimal
-    fn CLD(&self) -> u8 {
-        todo!()
+    fn CLD(&mut self) -> u8 {
+        self.set_flag(Flags6502::D, false);
+        0
     }
     /// clear interrupt disable
-    fn CLI(&self) -> u8 {
-        todo!()
+    fn CLI(&mut self) -> u8 {
+        self.set_flag(Flags6502::I, false);
+        0
     }
     /// clear overflow
-    fn CLV(&self) -> u8 {
-        todo!()
+    fn CLV(&mut self) -> u8 {
+        self.set_flag(Flags6502::V, false);
+        0
     }
     /// compare (with accumulator)
     fn CMP(&self) -> u8 {
@@ -582,16 +819,23 @@ impl Nes6502 {
         todo!()
     }
     /// push accumulator
-    fn PHA(&self) -> u8 {
-        todo!()
+    fn PHA(&mut self) -> u8 {
+        // the stack is hardcoded to start at location 0x0100 the stack pointer is an offset to it
+        self.write(0x0100 + self.stkp as u16, self.a);
+        self.stkp -= 1;
+        0
     }
     /// push processor status (SR)
     fn PHP(&self) -> u8 {
         todo!()
     }
     /// pull accumulator
-    fn PLA(&self) -> u8{
-        todo!()
+    fn PLA(&mut self) -> u8{
+        self.stkp += 1;
+        self.a = self.read(0x0100 + self.stkp as u16);
+        self.set_flag(Flags6502::Z, self.a == 0x00);
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+        0
     }
     /// pull processor status (SR)
     fn PLP(&self) -> u8 {
@@ -606,16 +850,42 @@ impl Nes6502 {
         todo!()
     }
     /// return from interrupt
-    fn RTI(&self) -> u8 {
-        todo!()
+    /// Restores the state of the processor before the interrupt occured
+    fn RTI(&mut self) -> u8 {
+        self.stkp += 1;
+        self.status = self.read(0x0100 + self.stkp as u16);
+        self.status &= !(Flags6502::B as u8);
+        self.status &= !(Flags6502::U as u8);
+
+        self.stkp += 1;
+        self.pc = self.read(0x0100 + self.stkp as u16) as u16;
+        self.stkp += 1;
+        self.pc |= (self.read(0x0100 + self.stkp as u16) as u16) << 8;
+
+        0
     }
     /// return from subroutine
     fn RTS(&self) -> u8 {
         todo!()
     }
     /// subtract with carry
-    fn SBC(&self) -> u8 {
-        todo!()
+    fn SBC(&mut self) -> u8 {
+        self.fetch();
+
+        // invert the bits
+        let value: u16 = self.fetched as u16 ^ 0x00FF;
+        let temp: u16 = self.a as u16 + value + self.get_flag(Flags6502::C) as u16;
+
+        // set the carry bit if temp has overflowed
+        self.set_flag(Flags6502::C, (temp & 0xFF00) != 0);
+        // set the zero flag if temp is empty
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0);
+        // set the negative flag if bit 7 is turned on
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+        // set the overflow flag
+        self.set_flag(Flags6502::V, ((temp ^ self.a as u16) & (temp ^ value) & 0x0080) != 0);
+        self.a = temp as u8 & 0x00FF;
+        1
     }
     /// set carry
     fn SEC(&self) -> u8 {
