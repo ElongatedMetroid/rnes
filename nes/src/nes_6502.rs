@@ -1,3 +1,4 @@
+// Opcodes are better in capitals change my mind
 #![allow(non_snake_case)]
 
 use crate::bus::{Bus , MEM_SIZE};
@@ -165,11 +166,26 @@ impl Nes6502 {
 
     }
 
+    /// This function fetches the data used by the instruction into a convenient
+    /// numeric variable. But some instructions dont have to fetch data as the
+    /// source is implied by the instruction. For example INX increments the x
+    /// register. There is no additional data required. For all other addressing 
+    /// modes the data resides at the location held within addr_abs, so it is read
+    /// from there.
     /// The read location of data can come from two sources, a memory address, or
     /// its immediately available as part of the instruction. This function decides
     /// depending on address mode of the instruction byte
-    fn fetch(&self) -> u8 {
-        todo!()
+    /// 
+    /// This function stores the fetched data in the fetched variable, but also 
+    /// returns it for convienience.
+    fn fetch(&mut self) -> u8 {
+        // If the addressing is implied ( no additional data; nothing to fetch )
+        if !((self.lookup[self.opcode as usize].addrmode)(self) == self.IMP()) {
+            // set fetched to the contents of the address
+            self.fetched = self.read(self.addr_abs);
+        }
+        // returned the fetched data
+        self.fetched
     }
 
     // Linkage to the communication bus
