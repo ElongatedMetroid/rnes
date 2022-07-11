@@ -1,6 +1,6 @@
-use std::process;
+#![allow(non_snake_case)]
 
-use crate::bus::{Bus, BusError, MEM_SIZE};
+use crate::bus::{Bus , MEM_SIZE};
 
 /// Contains CPU flags
 pub enum Flags6502 {
@@ -30,6 +30,7 @@ pub enum Flags6502 {
     N = (1 << 7),
 }
 
+/// Contains NES hardware
 pub struct Nes6502 {
     bus: Bus,
 
@@ -116,26 +117,35 @@ impl Nes6502 {
 
     /// Perform one clock cycle's worth of update
     fn clock(&mut self) {
+        // Each instruction requires a variable number of clock cycles to execute,
+        // in this emulator, the only thing that matters is the final result and
+        // so the entire computation is performed in one hit.
+
+        // To remain compliant with connected devices its important that the emulation
+        // also takes time in order to execute instructions, so that delay is 
+        // implemented by counting down the cycles required by the instruction. When it
+        // reaches 0 the instruction is complete and the next is ready to be executed
         if self.cycles == 0 {
-            // get the opcode 
-            self.opcode = match self.read(self.pc) {
-                Ok(v) => v,
-                Err(e) => {
-                    println!("Bus error while trying to read next instruction: {:?}", e);
-                    process::exit(1);
-                }
-            };
+            // Read the next instruction byte, we use this to index the lookup table
+            // to get the information needed to implement the instruction
+            self.opcode = self.read(self.pc);
+            // Increment program counter, we read the part we needed (the opcode byte)
             self.pc += 1;
 
             // get number of cycles needed for the instruction
             self.cycles = self.lookup[self.opcode as usize].cycles;
 
+            // Perform a fetch of the intermmediate data using the required addressing mode
             let additional_cycle1 = (self.lookup[self.opcode as usize].addrmode)(self);
+            // Perform the operation
             let additional_cycle2 = (self.lookup[self.opcode as usize].operate)(self);
 
-            self.cycles += (additional_cycle1 & additional_cycle2);
+            // The addressing mode and opcode may have altered the number of cycles
+            // required for this instruction to complete
+            self.cycles += additional_cycle1 & additional_cycle2;
         }
         // everytime we call the clock function one cycle has elapsed
+        // so we decrement the number of cycles remaining for this instruction
         self.cycles -= 1;
     }
 
@@ -163,7 +173,7 @@ impl Nes6502 {
     }
 
     // Linkage to the communication bus
-    fn read(&self, addr: u16) -> Result<u8, BusError> {
+    fn read(&self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
     fn write(&mut self, addr: u16, data: u8) {
@@ -190,44 +200,223 @@ impl Nes6502 {
     // These functions may ajust the number of cycles required depending on
     // where the memory is accessed.
 
-    // No data as part of the instruction
-    // It could be operating upon the accumulator though
+    // All of the address modes will set the addr_abs variable so the instruction
+    // knows where to read the data from when it needs to.
+
+    /// No data as part of the instruction
+    /// It could be operating upon the accumulator though
     fn IMP(&mut self) -> u8 {
         self.fetched = self.a;
         0
     }
-    fn ZP0(&self) -> u8 {
-        todo!()
+    /// Zero page addressing: the byte of data we are interesting in reading
+    /// for this instruction can be located somewhere in page zero of memory
+    /// zero page is where the high byte is zero (ex. 0x00FF)
+    fn ZP0(&mut self) -> u8 {
+        // Read the address from the program counter 
+        self.addr_abs = self.read(self.pc) as u16;
+
+        // increment the program counter
+        self.pc += 1;
+
+        // set addr_abs to the lower byte of itself 
+        self.addr_abs &= 0x00FF;
+
+        0
     }
-    fn ZPY(&self) -> u8 {
-        todo!()
+    /// Zero page addressing with x register offset
+    fn ZPX(&mut self) -> u8 {
+        self.addr_abs = self.read(self.pc + self.x as u16) as u16;
+
+        self.pc += 1;
+        self.addr_abs &= 0x00FF;
+
+        0
     }
-    fn ABS(&self) -> u8 {
-        todo!()
+    /// Zero page addressing with y register offset
+    fn ZPY(&mut self) -> u8 {
+        self.addr_abs = self.read(self.pc + self.y as u16) as u16;
+        self.pc += 1;
+        self.addr_abs &= 0x00FF;
+
+        0
     }
-    fn ABY(&self) -> u8 {
-        todo!()
+    /// Absolute addressing a full 16-bit address is loaded and used
+    /// The instruction for this has to be 3 bytes long to store
+    /// (1) the opcode, (2) the lo byte of the absolute address, and
+    /// (3) the hi byte of the absolute address.
+    fn ABS(&mut self) -> u8 {
+        // Get lo byte of the instruction
+        let lo = self.read(self.pc) as u16;
+
+        // increment pc so we can get the hi byte
+        self.pc += 1;
+        
+        let hi = self.read(self.pc) as u16;
+        
+        self.pc += 1;
+
+        // combine the lo and hi byte
+        self.addr_abs = (hi << 8) | lo;
+
+        0
     }
-    fn IZX(&self) -> u8 {
-        todo!()
+    /// Absolute addressing with x register offset
+    fn ABX(&mut self) -> u8 {
+        // Get lo byte of the instruction
+        let lo = self.read(self.pc) as u16;
+
+        // increment pc so we can get the hi byte
+        self.pc += 1;
+        
+        let hi = self.read(self.pc) as u16;
+
+        self.pc += 1;
+
+        // combine the lo and hi byte
+        self.addr_abs = (hi << 8) | lo;
+        self.addr_abs += self.x as u16;
+        // if after incrementing with the x register the whole address has
+        // changed to a different page, we need to indicate to the system
+        // that we need an additional clock cycle.
+        // We can check this by seeing if the high byte has changed after
+        // adding x to it. Because if it has changed it changed due to 
+        // overflow.
+        if (self.addr_abs & 0xFF00) != (hi << 8) {
+            return 1;
+        } else {
+            0
+        }
     }
-    fn IMM(&self) -> u8 {
-        todo!()
+    /// Absolute addressing with y register offset
+    fn ABY(&mut self) -> u8 {
+        // Get lo byte of the instruction
+        let lo = self.read(self.pc) as u16;
+
+        // increment pc so we can get the hi byte
+        self.pc += 1;
+        
+        // Get the high byte of the instruction
+        let hi = self.read(self.pc) as u16;
+        
+        // move pc to next instruction
+        self.pc += 1;
+
+        // combine the lo and hi byte
+        self.addr_abs = (hi << 8) | lo;
+        self.addr_abs += self.y as u16;
+        
+        if (self.addr_abs & 0xFF00) != (hi << 8) {  
+            return 1;
+        } else {
+            0
+        }
     }
-    fn ZPX(&self) -> u8 {
-        todo!()
+    /// Immediate mode addressing means the data is immediatly supplied
+    /// as part of the instruction; its going to be the next byte
+    fn IMM(&mut self) -> u8 {
+        // set addr_abs to self.pc because the data is the next byte
+        // of the instruction (pc is already set to the next byte), 
+        // so the instruction knows to read the data from there
+        self.addr_abs = self.pc;
+        self.pc += 1;
+        0
     }
-    fn REL(&self) -> u8 {
-        todo!()
+    /// Indirect, the 16-bit address is read to get the actual 16-bit address.
+    /// This addressing mode is weird because it has a bug in the hardware. To
+    /// emulate this acurratly, we need to also emulate this bug. If the low
+    /// byte of the supplied address is 0xFF, then to read the high byte of the
+    /// actual address we need to cross a page boundary. This doesnt actually
+    /// work on the chip as designed, instead it wraps back around in the same
+    /// page, yeilding an invailid actual address
+    fn IND(&mut self) -> u8 {
+        // get lo byte of the pointer
+        let ptr_lo = self.read(self.pc) as u16;
+        // increment program counter to get hi byte of the pointer
+        self.pc += 1;
+        // get hi byte of the pointer
+        let ptr_hi = self.read(self.pc) as u16;
+        // move the program counter to the next instruction
+        self.pc += 1;
+
+        // combine lo and hi
+        let ptr = (ptr_hi << 8) | ptr_lo;
+
+        // Simulate hardware bug
+        if ptr_lo == 0x00FF {
+            self.addr_abs = ((self.read(ptr & 0xFF00) as u16) << 8) | self.read(ptr + 0) as u16;
+        } else { // Behave normally
+            // Read the address the pointer contains
+            self.addr_abs = ((self.read(ptr + 1) as u16) << 8) | self.read(ptr + 0) as u16;
+        }
+        
+        0
     }
-    fn ABX(&self) -> u8 {
-        todo!()
+    /// Indirect addressing of zero page with x offset (the 16-bit address is stored in 0 page)
+    /// The supplied 8-bit address is offset by X Register to index
+    /// a location in page 0x00. The actual 16-bit address is read 
+    /// from this location
+    fn IZX(&mut self) -> u8 {
+        // The supplied address located in zero page references somewhere in memory
+        let t = self.read(self.pc) as u16;
+        // increment program counter to position it at next instruction
+        self.pc += 1;
+
+        // Read the 16-bit address from zero page
+        // read the data (because the address contains another address) of the lo byte of address + the x register
+        let lo = self.read(((t + self.x as u16) as u16) & 0x00FF) as u16;
+        // read the data the hi byte of the address + the x register
+        let hi = self.read(((t + (self.x + 1) as u16) as u16) & 0x00FF) as u16;
+        
+        // combine lo and hi
+        self.addr_abs = (hi << 8) | lo;
+
+        0
     }
-    fn IND(&self) -> u8 {
-        todo!()
+    /// Indirect addressing of zero page with y offset
+    /// This is different from Indirect addressing with x offset;
+    /// if the offset causes a change in page then an additional 
+    /// clock cycle if required
+    fn IZY(&mut self) -> u8 {
+        // The supplied address located in zero page references somewhere in memory
+        let t = self.read(self.pc) as u16;
+        // increment program counter to position it at next instruction
+        self.pc += 1;
+
+        // Read the 16-bit address from zero page
+        // read the data (because the address contains another address) of the lo byte of address + the y register
+        let lo = self.read((t as u16) & 0x00FF) as u16;
+        // read the data the hi byte of the address + the y register
+        let hi = self.read((t + 1 as u16) & 0x00FF) as u16;
+        
+        // combine lo and hi
+        self.addr_abs = (hi << 8) | lo;
+        self.addr_abs += self.y as u16;
+
+        // check if the page has changed from the y offset
+        if (self.addr_abs & 0xFF00) != (hi << 8) {
+            return 1;
+        } else {
+            0   
+        }
     }
-    fn IZY(&self) -> u8 {
-        todo!()
+    /// Relative addressing, this mode is exclusive to branch
+    /// instructions, the address must reside within -128 to 
+    /// +127 of the branch instruction, i.e. you cant directly
+    /// branch to any address in the addressable range
+    fn REL(&mut self) -> u8 {
+        // Read the address contained in the program counter
+        self.addr_rel = self.read(self.pc) as u16;
+        // move program counter to next insturction
+        self.pc += 1;
+        // Check if the address is signed
+        if self.addr_rel & 0x80 == 1 {
+            // if it is signed, set the high byte of the address
+            // to all ones
+            self.addr_rel |= 0xFF00;
+        }
+
+        0
     }
 
     // Opcodes
