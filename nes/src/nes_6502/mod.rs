@@ -1,7 +1,9 @@
 // Opcodes are better in capitals change my mind
 #![allow(non_snake_case)]
 
-use crate::bus::{Bus , MEM_SIZE};
+use std::collections::HashMap;
+
+use crate::bus::{Bus , MEM_SIZE, self};
 mod opcodes;
 mod addressing_modes;
 
@@ -281,7 +283,100 @@ impl Nes6502 {
 
     /// Produces a hash map of strings, with keys equivalent to instruction
     /// start locations in memory, for the specified address range
-    fn disassemble(n_start: u16, n_stop: u16) {
-        
+    fn disassemble(&mut self, n_start: &u16, n_stop: &u16) -> HashMap<u16, String> {
+        let mut addr= *n_start as u32;
+        let mut value: u8 = 0x00;
+        let mut lo: u8 = 0x00;
+        let mut hi: u8 = 0x00;
+        let mut map_lines: HashMap<u16, String> = HashMap::new();
+        let mut line_addr: u16 = 0;
+
+        while addr <= *n_stop as u32 {
+            line_addr = addr as u16;
+
+            // prefix line with instruction address
+            let mut s_inst = format!("${:X}: ", addr);
+
+            // read instruction and get its readable name
+            let opcode = self.read(addr as u16);
+            addr += 1;
+            s_inst = format!("{}{} ", s_inst, self.lookup[opcode as usize].name); 
+
+            if (self.lookup[opcode as usize].addrmode)(self) == self.IMP() {
+                s_inst = format!("{} {{IMP}}", s_inst);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.IMM() {
+                value = self.read(addr as u16);
+                addr += 1;
+                s_inst = format!("{}#${:X} {{IMM}}", s_inst, value);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.ZP0() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = 0x00;
+                s_inst = format!("{}${:X} {{ZP0}}", s_inst, lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.ZPX() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = 0x00;
+                s_inst = format!("{}${:X}, X {{ZPX}}", s_inst, lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.ZPY() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = 0x00;
+                s_inst = format!("{}${:X}, Y {{ZPY}}", s_inst, lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.IZX() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = 0x00;
+                s_inst = format!("{}(${:X}, X) {{IZX}}", s_inst, lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.IZY() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = 0x00;
+                s_inst = format!("{}(${:X}), Y {{IZY}}", s_inst, lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.ABS() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = self.read(addr as u16);
+                addr += 1;
+                s_inst = format!("{}${:X} {{ABS}}", s_inst, (hi << 8) | lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.ABX() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = self.read(addr as u16);
+                addr += 1;
+                s_inst = format!("{}${:X}, X {{ABS}}", s_inst, (hi << 8) | lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.ABY() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = self.read(addr as u16);
+                addr += 1;
+                s_inst = format!("{}${:X}, Y {{ABS}}", s_inst, (hi << 8) | lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.IND() {
+                lo = self.read(addr as u16);
+                addr += 1;
+                hi = self.read(addr as u16);
+                addr += 1;
+                s_inst = format!("{}(${:X}) {{IND}}", s_inst, (hi << 8) | lo);
+            }
+            else if (self.lookup[opcode as usize].addrmode)(self) == self.REL() {
+                value = self.read(addr as u16);
+                addr += 1;
+                s_inst = format!("{}${:X} [${:X}] {{REL}}", s_inst, value, addr + value as u32);
+            }
+
+            map_lines.insert(line_addr, s_inst);
+        }
+
+        map_lines
     }
 }
