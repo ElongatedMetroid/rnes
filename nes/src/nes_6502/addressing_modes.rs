@@ -39,7 +39,7 @@ impl Nes6502 {
     }
     /// Zero page addressing with x register offset
     pub(super) fn ZPX(&mut self) -> u8 {
-        self.addr_abs = self.read(self.pc + self.x as u16) as u16;
+        self.addr_abs = (self.read(self.pc) + self.x) as u16;
 
         self.pc += 1;
         self.addr_abs &= 0x00FF;
@@ -48,7 +48,8 @@ impl Nes6502 {
     }
     /// Zero page addressing with y register offset
     pub(super) fn ZPY(&mut self) -> u8 {
-        self.addr_abs = self.read(self.pc + self.y as u16) as u16;
+        self.addr_abs = (self.read(self.pc) + self.y) as u16;
+
         self.pc += 1;
         self.addr_abs &= 0x00FF;
 
