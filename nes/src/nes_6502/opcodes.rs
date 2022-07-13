@@ -94,8 +94,23 @@ impl Nes6502 {
         todo!()
     }
     /// break / interrupt
-    pub(super) fn BRK(&self) -> u8 {
-        todo!()
+    pub(super) fn BRK(&mut self) -> u8 {
+        self.pc += 1;
+
+        self.set_flag(Flags6502::I, true);
+        self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.stkp -= 1;
+        self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.stkp -= 1;
+
+        self.set_flag(Flags6502::B, true);
+        self.write(0x0100 + self.stkp as u16, self.status);
+        self.stkp -= 1;
+        self.set_flag(Flags6502::B, false);
+
+        self.pc = self.read(0xFFFE) as u16 | ((self.read(0xFFFF) as u16) << 8);
+        
+        0
     }
     /// branch on carry clear
     pub(super) fn BCC(&mut self) -> u8 {
@@ -256,12 +271,20 @@ impl Nes6502 {
         todo!()
     }
     /// decrement X
-    pub(super) fn DEX(&self) -> u8 {
-        todo!()
+    pub(super) fn DEX(&mut self) -> u8 {
+        self.x -= 1;
+        self.set_flag(Flags6502::Z, self.x == 0x00);
+        self.set_flag(Flags6502::N, (self.x & 0x80) != 0);
+
+        0
     }
     /// decrement Y
-    pub(super) fn DEY(&self) -> u8 {
-        todo!()
+    pub(super) fn DEY(&mut self) -> u8 {
+        self.y -= 1;
+        self.set_flag(Flags6502::Z, self.y == 0x00);
+        self.set_flag(Flags6502::N, (self.y & 0x80) != 0);
+
+        0
     }
     /// exclusive or (with accumulator)
     pub(super) fn EOR(&self) -> u8 {
@@ -288,16 +311,31 @@ impl Nes6502 {
         todo!()
     }
     /// load accumulator
-    pub(super) fn LDA(&self) -> u8 {
-        todo!()
+    pub(super) fn LDA(&mut self) -> u8 {
+        self.fetch();
+        self.a = self.fetched;
+        self.set_flag(Flags6502::Z, self.a == 0x00);
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+
+        1
     }
     /// load X
-    pub(super) fn LDX(&self) -> u8 {
-        todo!()
+    pub(super) fn LDX(&mut self) -> u8 {
+        self.fetch();
+        self.x = self.fetched;
+        self.set_flag(Flags6502::Z, self.x == 0x00);
+        self.set_flag(Flags6502::N, (self.x & 0x80) != 0);
+
+        1
     }
     /// load Y
-    pub(super) fn LDY(&self) -> u8 {
-        todo!()
+    pub(super) fn LDY(&mut self) -> u8 {
+        self.fetch();
+        self.y = self.fetched;
+        self.set_flag(Flags6502::Z, self.y == 0x00);
+        self.set_flag(Flags6502::N, (self.y & 0x80) != 0);
+
+        1
     }
     /// logical shift right
     pub(super) fn LSR(&self) -> u8 {
@@ -305,7 +343,7 @@ impl Nes6502 {
     }
     /// no operation
     pub(super) fn NOP(&self) -> u8 {
-        todo!()
+        0
     }
     /// or with accumulator
     pub(super) fn ORA(&self) -> u8 {
@@ -393,16 +431,22 @@ impl Nes6502 {
         todo!()
     }
     /// store accumulator
-    pub(super) fn STA(&self) -> u8 {
-        todo!()
+    pub(super) fn STA(&mut self) -> u8 {
+        self.write(self.addr_abs, self.a);
+        
+        0
     }
     /// store X
-    pub(super) fn STX(&self) -> u8 {
-        todo!()
+    pub(super) fn STX(&mut self) -> u8 {
+        self.write(self.addr_abs, self.x);
+        
+        0
     }
     /// store Y
-    pub(super) fn STY(&self) -> u8 {
-        todo!()
+    pub(super) fn STY(&mut self) -> u8 {
+        self.write(self.addr_abs, self.y);
+        
+        0
     }
     /// transfer accumulator to X
     pub(super) fn TAX(&self) -> u8 {
