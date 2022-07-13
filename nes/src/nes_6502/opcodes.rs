@@ -56,7 +56,7 @@ impl Nes6502 {
         // fetch the data we are adding to the accumulator
         self.fetch();
         
-        let temp: u16 = self.a as u16 + self.fetched as u16 + self.get_flag(Flags6502::C) as u16;
+        let temp: u16 = (self.a as u16).wrapping_add(self.fetched as u16 + self.get_flag(Flags6502::C) as u16);
         // set the carry bit if temp has overflowed
         self.set_flag(Flags6502::C, temp > 255);
         // set the zero flag if temp is empty
@@ -405,7 +405,7 @@ impl Nes6502 {
 
         // invert the bits
         let value: u16 = self.fetched as u16 ^ 0x00FF;
-        let temp: u16 = self.a as u16 + value + self.get_flag(Flags6502::C) as u16;
+        let temp: u16 = (self.a as u16).wrapping_add(value + self.get_flag(Flags6502::C) as u16);
 
         // set the carry bit if temp has overflowed
         self.set_flag(Flags6502::C, (temp & 0xFF00) != 0);
