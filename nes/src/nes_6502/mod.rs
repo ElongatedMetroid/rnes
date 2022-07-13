@@ -37,20 +37,20 @@ pub enum Flags6502 {
 
 /// Contains NES hardware
 pub struct Nes6502 {
-    bus: Bus,
+    pub bus: Bus,
 
     /// Accumulator Register
-    a: u8,
+    pub a: u8,
     /// X Register
-    x: u8,
+    pub x: u8,
     /// Y Register
-    y: u8,
+    pub y: u8,
     /// Stack pointer (pointers to a location on the bus)
-    stkp: u8,
+    pub stkp: u8,
     /// Program counter
-    pc: u16,
+    pub pc: u16,
     /// Status Register
-    status: u8,
+    pub status: u8,
 
     // Variables bellow assiste to facilitate emulation
 
@@ -99,7 +99,7 @@ impl Nes6502 {
         };
 
         nes.lookup = vec![
-            Instruction{ name: "BRK", operate: |nes| nes.BRK(), addrmode: |nes| nes.IMM(), cycles: 7 },Instruction{ name: "ORA", operate: |nes| nes.ORA(),  addrmode: |nes| nes.IZX(), cycles: 6 },Instruction{ name: "???", operate: |nes| nes.XXX(), addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 8 },Instruction{ name: "???", operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 3 },Instruction{ name: "ORA", operate: |nes| nes.ORA(),  addrmode: |nes| nes.ZP0(), cycles: 3 },Instruction{ name: "ASL", operate: |nes| nes.ASL(),  addrmode: |nes| nes.ZP0(), cycles: 5 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 5 },Instruction{ name: "PHP", operate: |nes| nes.PHP(),   addrmode: |nes| nes.IMP(), cycles: 3 },Instruction{ name: "ORA",  operate: |nes| nes.ORA(),  addrmode: |nes| nes.IMM(), cycles: 2 },Instruction{ name: "ASL",  operate: |nes| nes.ASL(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "ORA",  operate: |nes| nes.ORA(), addrmode: |nes| nes.ABS(), cycles: 4 },Instruction{ name: "ASL",  operate: |nes| nes.ASL(), addrmode: |nes| nes.ABS(), cycles: 6 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 6 },
+            Instruction{ name: "BRK", operate: |nes| nes.BRK(), addrmode: |nes| nes.IMP(), cycles: 7 },Instruction{ name: "ORA", operate: |nes| nes.ORA(),  addrmode: |nes| nes.IZX(), cycles: 6 },Instruction{ name: "???", operate: |nes| nes.XXX(), addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 8 },Instruction{ name: "???", operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 3 },Instruction{ name: "ORA", operate: |nes| nes.ORA(),  addrmode: |nes| nes.ZP0(), cycles: 3 },Instruction{ name: "ASL", operate: |nes| nes.ASL(),  addrmode: |nes| nes.ZP0(), cycles: 5 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 5 },Instruction{ name: "PHP", operate: |nes| nes.PHP(),   addrmode: |nes| nes.IMP(), cycles: 3 },Instruction{ name: "ORA",  operate: |nes| nes.ORA(),  addrmode: |nes| nes.IMM(), cycles: 2 },Instruction{ name: "ASL",  operate: |nes| nes.ASL(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "ORA",  operate: |nes| nes.ORA(), addrmode: |nes| nes.ABS(), cycles: 4 },Instruction{ name: "ASL",  operate: |nes| nes.ASL(), addrmode: |nes| nes.ABS(), cycles: 6 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 6 },
             Instruction{ name: "BPL", operate: |nes| nes.BPL(), addrmode: |nes| nes.REL(), cycles: 2 },Instruction{ name: "ORA", operate: |nes| nes.ORA(),  addrmode: |nes| nes.IZY(), cycles: 5 },Instruction{ name: "???", operate: |nes| nes.XXX(), addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 8 },Instruction{ name: "???", operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "ORA", operate: |nes| nes.ORA(),  addrmode: |nes| nes.ZPX(), cycles: 4 },Instruction{ name: "ASL", operate: |nes| nes.ASL(),  addrmode: |nes| nes.ZPX(), cycles: 6 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 6 },Instruction{ name: "CLC", operate: |nes| nes.CLC(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "ORA",  operate: |nes| nes.ORA(),  addrmode: |nes| nes.ABY(), cycles: 4 },Instruction{ name: "???",  operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 7 },Instruction{ name: "???",  operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "ORA",  operate: |nes| nes.ORA(), addrmode: |nes| nes.ABX(), cycles: 4 },Instruction{ name: "ASL",  operate: |nes| nes.ASL(), addrmode: |nes| nes.ABX(), cycles: 7 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 7 },
             Instruction{ name: "JSR", operate: |nes| nes.JSR(), addrmode: |nes| nes.ABS(), cycles: 6 },Instruction{ name: "AND", operate: |nes| nes.AND(),  addrmode: |nes| nes.IZX(), cycles: 6 },Instruction{ name: "???", operate: |nes| nes.XXX(), addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 8 },Instruction{ name: "BIT", operate: |nes| nes.BIT(),   addrmode: |nes| nes.ZP0(), cycles: 3 },Instruction{ name: "AND", operate: |nes| nes.AND(),  addrmode: |nes| nes.ZP0(), cycles: 3 },Instruction{ name: "ROL", operate: |nes| nes.ROL(),  addrmode: |nes| nes.ZP0(), cycles: 5 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 5 },Instruction{ name: "PLP", operate: |nes| nes.PLP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "AND",  operate: |nes| nes.AND(),  addrmode: |nes| nes.IMM(), cycles: 2 },Instruction{ name: "ROL",  operate: |nes| nes.ROL(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "BIT",  operate: |nes| nes.BIT(),   addrmode: |nes| nes.ABS(), cycles: 4 },Instruction{ name: "AND",  operate: |nes| nes.AND(), addrmode: |nes| nes.ABS(), cycles: 4 },Instruction{ name: "ROL",  operate: |nes| nes.ROL(), addrmode: |nes| nes.ABS(), cycles: 6 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 6 },
             Instruction{ name: "BMI", operate: |nes| nes.BMI(), addrmode: |nes| nes.REL(), cycles: 2 },Instruction{ name: "AND", operate: |nes| nes.AND(),  addrmode: |nes| nes.IZY(), cycles: 5 },Instruction{ name: "???", operate: |nes| nes.XXX(), addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 8 },Instruction{ name: "???", operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "AND", operate: |nes| nes.AND(),  addrmode: |nes| nes.ZPX(), cycles: 4 },Instruction{ name: "ROL", operate: |nes| nes.ROL(),  addrmode: |nes| nes.ZPX(), cycles: 6 },Instruction{ name: "???", operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 6 },Instruction{ name: "SEC", operate: |nes| nes.SEC(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "AND",  operate: |nes| nes.AND(),  addrmode: |nes| nes.ABY(), cycles: 4 },Instruction{ name: "???",  operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 2 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 7 },Instruction{ name: "???",  operate: |nes| nes.NOP(),   addrmode: |nes| nes.IMP(), cycles: 4 },Instruction{ name: "AND",  operate: |nes| nes.AND(), addrmode: |nes| nes.ABX(), cycles: 4 },Instruction{ name: "ROL",  operate: |nes| nes.ROL(), addrmode: |nes| nes.ABX(), cycles: 7 },Instruction{ name: "???",  operate: |nes| nes.XXX(),   addrmode: |nes| nes.IMP(), cycles: 7 },
@@ -121,7 +121,7 @@ impl Nes6502 {
     }
 
     /// Perform one clock cycle's worth of update
-    fn clock(&mut self) {
+    pub fn clock(&mut self) {
         // Each instruction requires a variable number of clock cycles to execute,
         // in this emulator, the only thing that matters is the final result and
         // so the entire computation is performed in one hit.
@@ -134,6 +134,8 @@ impl Nes6502 {
             // Read the next instruction byte, we use this to index the lookup table
             // to get the information needed to implement the instruction
             self.opcode = self.read(self.pc);
+
+            self.set_flag(Flags6502::U, true);
             // Increment program counter, we read the part we needed (the opcode byte)
             self.pc += 1;
 
@@ -148,23 +150,22 @@ impl Nes6502 {
             // The addressing mode and opcode may have altered the number of cycles
             // required for this instruction to complete
             self.cycles += additional_cycle1 & additional_cycle2;
+
+            self.set_flag(Flags6502::U, true);
         }
         // everytime we call the clock function one cycle has elapsed
         // so we decrement the number of cycles remaining for this instruction
         self.cycles -= 1;
+    }
+    pub fn complete(&self) -> bool {
+        self.cycles == 0
     }
 
     // The functions below represent external event functions, In the NES hardware,
     // these represent pins that are asserted to produce a change in state.
 
     /// Reset Interrupt - forces the CPU into a known state
-    fn reset(&mut self) {
-        self.a = 0;
-        self.x = 0;
-        self.y = 0;
-        self.stkp = 0xFD;
-        self.status = 0x00 | Flags6502::U as u8;
-
+    pub fn reset(&mut self) {
         // this address contains the address we want to set our program counter to
         self.addr_abs = 0xFFFC;
         // get lo byte of the address
@@ -174,6 +175,12 @@ impl Nes6502 {
 
         self.pc = (hi << 8) | lo;
 
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
+        self.stkp = 0xFD;
+        self.status = 0x00 | Flags6502::U as u8;
+
         self.addr_rel = 0x0000;
         self.addr_abs = 0x0000;
         self.fetched = 0x00;
@@ -181,7 +188,7 @@ impl Nes6502 {
         self.cycles = 8;
     }
     /// Interrupt Request - Executes an instruction at a specific location
-    fn irq(&mut self) {
+    pub fn irq(&mut self) {
         // if interrupts are enabled
         if self.get_flag(Flags6502::I) == 0 {
             // push the program counter to the stack
@@ -208,7 +215,7 @@ impl Nes6502 {
         }
     }
     /// Non-Maskable Interrupt Request - Same as irq but cannot be disabled
-    fn nmi(&mut self) {
+    pub fn nmi(&mut self) {
         // push the program counter to the stack
         self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
         self.stkp -= 1;
@@ -255,16 +262,16 @@ impl Nes6502 {
     }
 
     // Linkage to the communication bus
-    fn read(&self, addr: u16) -> u8 {
+    pub fn read(&self, addr: u16) -> u8 {
         self.bus.read(addr)
     }
-    fn write(&mut self, addr: u16, data: u8) {
+    pub fn write(&mut self, addr: u16, data: u8) {
         self.bus.write(addr, data);
     }
 
     // Convenience functions to access status register
     /// Returns the value of a specific bit of the status register
-    fn get_flag(&self, f: Flags6502) -> u8 {
+    pub fn get_flag(&self, f: Flags6502) -> u8 {
         return if (self.status & f as u8) > 0 {
             1
         } else {
@@ -283,15 +290,15 @@ impl Nes6502 {
 
     /// Produces a hash map of strings, with keys equivalent to instruction
     /// start locations in memory, for the specified address range
-    fn disassemble(&mut self, n_start: &u16, n_stop: &u16) -> HashMap<u16, String> {
-        let mut addr= *n_start as u32;
+    pub fn disassemble(&mut self, n_start: u16, n_stop: u16) -> HashMap<u16, String> {
+        let mut addr= n_start as u32;
         let mut value: u8 = 0x00;
-        let mut lo: u8 = 0x00;
-        let mut hi: u8 = 0x00;
+        let mut lo: u16 = 0x00;
+        let mut hi: u16 = 0x00;
         let mut map_lines: HashMap<u16, String> = HashMap::new();
         let mut line_addr: u16 = 0;
 
-        while addr <= *n_stop as u32 {
+        while addr <= n_stop as u32 {
             line_addr = addr as u16;
 
             // prefix line with instruction address
@@ -311,60 +318,60 @@ impl Nes6502 {
                 s_inst = format!("{}#${:X} {{IMM}}", s_inst, value);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.ZP0() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}${:X} {{ZP0}}", s_inst, lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.ZPX() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}${:X}, X {{ZPX}}", s_inst, lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.ZPY() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}${:X}, Y {{ZPY}}", s_inst, lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.IZX() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}(${:X}, X) {{IZX}}", s_inst, lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.IZY() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}(${:X}), Y {{IZY}}", s_inst, lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.ABS() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16);
+                hi = self.read(addr as u16) as u16;
                 addr += 1;
                 s_inst = format!("{}${:X} {{ABS}}", s_inst, (hi << 8) | lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.ABX() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16);
+                hi = self.read(addr as u16) as u16;
                 addr += 1;
-                s_inst = format!("{}${:X}, X {{ABS}}", s_inst, (hi << 8) | lo);
+                s_inst = format!("{}${:X}, X {{ABX}}", s_inst, (hi << 8) | lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.ABY() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16);
+                hi = self.read(addr as u16) as u16;
                 addr += 1;
-                s_inst = format!("{}${:X}, Y {{ABS}}", s_inst, (hi << 8) | lo);
+                s_inst = format!("{}${:X}, Y {{ABY}}", s_inst, (hi << 8) | lo);
             }
             else if (self.lookup[opcode as usize].addrmode)(self) == self.IND() {
-                lo = self.read(addr as u16);
+                lo = self.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16);
+                hi = self.read(addr as u16) as u16;
                 addr += 1;
                 s_inst = format!("{}(${:X}) {{IND}}", s_inst, (hi << 8) | lo);
             }
