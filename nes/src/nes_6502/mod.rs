@@ -57,7 +57,7 @@ pub struct Nes6502 {
     /// Represents the working input value to the ALU
     fetched: u8,
     /// All used memory addresses end up in here
-    addr_abs: u16,
+    pub addr_abs: u16,
     /// Represents absolute address following a branch
     addr_rel: u16,
     /// The instruction byte
@@ -138,6 +138,8 @@ impl Nes6502 {
             self.set_flag(Flags6502::U, true);
             // Increment program counter, we read the part we needed (the opcode byte)
             self.pc += 1;
+
+            println!("Executing instruction: {} ({:X})", self.lookup[self.opcode as usize].name, self.opcode);
 
             // get number of cycles needed for the instruction
             self.cycles = self.lookup[self.opcode as usize].cycles;
@@ -253,7 +255,7 @@ impl Nes6502 {
     /// returns it for convienience.
     fn fetch(&mut self) -> u8 {
         // If the addressing is implied ( no additional data; nothing to fetch )
-        if !((self.lookup[self.opcode as usize].addrmode)(self) == self.IMP()) {
+        if self.lookup[self.opcode as usize].addrmode as usize != self.lookup[0x00].addrmode as usize {
             // set fetched to the contents of the address
             self.fetched = self.read(self.addr_abs);
         }
