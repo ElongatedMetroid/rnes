@@ -20,18 +20,12 @@ impl Test6502 {
         let mut n_ram_y = y;
 
         for row in 0..n_rows {
-            let mut s_offset = format!("${:X}:", n_addr);
+            let mut s_offset = format!("${:04X}:", n_addr);
             for col in 0..n_columns {
-                s_offset = format!("{} {:X}", s_offset, self.nes.read(n_addr));
+                s_offset = format!("{} {:02X}", s_offset, self.nes.read(n_addr));
                 n_addr += 1;
             }
-            match olc::draw_string(n_ram_x, n_ram_y, &s_offset, olc::BLACK) {
-                Ok(_) => (),
-                Err(e) => {
-                    println!("I could not draw that string bro: {}", e);
-                    process::exit(1);
-                }
-            };
+            olc::draw_string(n_ram_x, n_ram_y, &s_offset, olc::BLACK).unwrap();
             n_ram_y += 10;
         }
     }
@@ -46,13 +40,13 @@ impl Test6502 {
         olc::draw_string(x + 144, y, "I", if self.nes.get_flag(Flags6502::I) == 1 { olc::GREEN } else { olc::RED }).unwrap();
         olc::draw_string(x + 160, y, "Z", if self.nes.get_flag(Flags6502::Z) == 1 { olc::GREEN } else { olc::RED }).unwrap();
         olc::draw_string(x + 178, y, "C", if self.nes.get_flag(Flags6502::C) == 1 { olc::GREEN } else { olc::RED }).unwrap();
-        olc::draw_string(x, y + 10, &format!("PC: ${:X}", self.nes.pc), olc::GREEN).unwrap();
-        olc::draw_string(x, y + 20, &format!("A: ${:X} [{}]", self.nes.a, self.nes.a), olc::GREEN).unwrap();
-        olc::draw_string(x, y + 30, &format!("X: ${:X} [{}]", self.nes.x, self.nes.a), olc::GREEN).unwrap();
-        olc::draw_string(x, y + 40, &format!("Y: ${:X} [{}]", self.nes.y, self.nes.a), olc::GREEN).unwrap();
-        olc::draw_string(x, y + 50, &format!("Stack Ptr: ${:X}", self.nes.stkp), olc::GREEN).unwrap();
+        olc::draw_string(x, y + 10, &format!("PC: ${:04X}", self.nes.pc), olc::GREEN).unwrap();
+        olc::draw_string(x, y + 20, &format!("A: ${:02X} [{:03}]", self.nes.a, self.nes.a), olc::GREEN).unwrap();
+        olc::draw_string(x, y + 30, &format!("X: ${:02X} [{:03}]", self.nes.x, self.nes.x), olc::GREEN).unwrap();
+        olc::draw_string(x, y + 40, &format!("Y: ${:02X} [{:03}]", self.nes.y, self.nes.y), olc::GREEN).unwrap();
+        olc::draw_string(x, y + 50, &format!("Stack Ptr: ${:04X}", self.nes.stkp), olc::GREEN).unwrap();
     
-        println!("pc: {} a: {} x: {} y: {} stkp: {}", self.nes.pc, self.nes.a, self.nes.x, self.nes.y, self.nes.stkp);
+        //println!("pc: {} a: {} x: {} y: {} stkp: {}", self.nes.pc, self.nes.a, self.nes.x, self.nes.y, self.nes.stkp);
     }
 }
 
@@ -66,7 +60,7 @@ impl olc::Application for Test6502 {
         self.nes.bus.ram[0xFFFC] = 0x00;
         self.nes.bus.ram[0xFFFD] = 0x80;
 
-        self.map_asm = self.nes.disassemble(0x0000, 0xFFFF);
+        //self.map_asm = self.nes.disassemble(0x0000, 0xFFFF);
 
         self.nes.reset();
 
