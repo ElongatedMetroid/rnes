@@ -11,7 +11,7 @@ mod nes_6502;
 
 struct Test6502 {
     nes: Nes6502,
-    map_asm: HashMap<u16, String>,
+    map_asm: Vec<String>,
 }
 
 impl Test6502 {
@@ -45,8 +45,14 @@ impl Test6502 {
         olc::draw_string(x, y + 30, &format!("X: ${:02X} [{:03}]", self.nes.x, self.nes.x), olc::GREEN).unwrap();
         olc::draw_string(x, y + 40, &format!("Y: ${:02X} [{:03}]", self.nes.y, self.nes.y), olc::GREEN).unwrap();
         olc::draw_string(x, y + 50, &format!("Stack Ptr: ${:04X}", self.nes.stkp), olc::GREEN).unwrap();
-    
-        //println!("pc: {} a: {} x: {} y: {} stkp: {}", self.nes.pc, self.nes.a, self.nes.x, self.nes.y, self.nes.stkp);
+    }
+
+    fn draw_asm(&self, x: i32, y: i32) {
+        let mut i = 0;
+        for line in &self.map_asm {
+            olc::draw_string(x, y + i as i32, line.as_str(), olc::BLACK);
+            i += 10;
+        }
     }
 }
 
@@ -60,7 +66,7 @@ impl olc::Application for Test6502 {
         self.nes.bus.ram[0xFFFC] = 0x00;
         self.nes.bus.ram[0xFFFD] = 0x80;
 
-        //self.map_asm = self.nes.disassemble(0x0000, 0xFFFF);
+        self.map_asm = self.nes.disassemble(0x0000, 0xFFFF);
 
         self.nes.reset();
 
@@ -86,6 +92,8 @@ impl olc::Application for Test6502 {
         self.draw_ram(2, 182, 0x8000, 16, 16);
         self.draw_cpu(448, 2);
 
+        self.draw_asm(448, 72);
+
         Ok(())
     }
     fn on_user_destroy(&mut self) -> Result<(), olc_pixel_game_engine::Error> {
@@ -96,8 +104,14 @@ impl olc::Application for Test6502 {
 fn main() {
     let mut test = Test6502 {
         nes: Nes6502::new(),
-        map_asm: HashMap::new()
+        map_asm: Vec::new()
     };
 
-    olc::start("rnes", &mut test, 680, 480, 2, 2);
+    match olc::start("rnes", &mut test, 680, 480, 2, 2) {
+        Ok(_) => (),
+        Err(e) => {
+            println!("An error occured while trying to start the program: {}", e);
+            process::exit(1);
+        }
+    }
 }
