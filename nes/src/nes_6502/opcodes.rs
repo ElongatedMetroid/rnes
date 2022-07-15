@@ -62,7 +62,7 @@ impl Nes6502 {
         // set the zero flag if temp is empty
         self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0);
         // set the overflow flag
-        self.set_flag(Flags6502::V, ((!(self.a as u16 ^ self.fetched as u16 & self.a as u16 ^ temp)) & 0x0080) != 0);
+        self.set_flag(Flags6502::V, ((!(self.a as u16 ^ self.fetched as u16 & self.a as u16 ^ temp)) & 0x0080) == 0);
         // set the negative flag if bit 7 is turned on
         self.set_flag(Flags6502::N, (temp & 0x80) != 0);
 
@@ -178,7 +178,7 @@ impl Nes6502 {
     pub(super) fn BNE(&mut self) -> u8 {
         if self.get_flag(Flags6502::Z) == 0 {
             self.cycles += 1;
-            self.addr_abs = self.pc + self.addr_rel;
+            self.addr_abs = self.pc.wrapping_add(self.addr_rel);
 
             if (self.addr_abs & 0xFF00) != (self.pc & 0xFF00) {
                 self.cycles += 1;
