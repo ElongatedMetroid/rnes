@@ -1,5 +1,40 @@
 use super::Nes6502;
 
+#[derive(PartialEq, Clone, Copy)]
+pub enum AddressMode {
+    IMP,
+    ZP0,
+    ZPX,
+    ZPY,
+    ABS,
+    ABX,
+    ABY,
+    IMM,
+    IND,
+    IZX,
+    IZY,
+    REL,
+}
+
+impl AddressMode {
+    pub fn execute(mode: AddressMode, nes: &mut Nes6502) -> u8 {
+        match mode {
+            AddressMode::IMP => nes.IMP(),
+            AddressMode::ZP0 => nes.ZP0(),
+            AddressMode::ZPX => nes.ZPX(),
+            AddressMode::ZPY => nes.ZPY(),
+            AddressMode::ABS => nes.ABS(),
+            AddressMode::ABX => nes.ABX(),
+            AddressMode::ABY => nes.ABY(),
+            AddressMode::IMM => nes.IMM(),
+            AddressMode::IND => nes.IND(),
+            AddressMode::IZX => nes.IZX(),
+            AddressMode::IZY => nes.IZY(),
+            AddressMode::REL => nes.REL(),
+        }
+    }
+}
+
 impl Nes6502 {
     // Addressing modes, the 6502 has many addressing modes which are used
     // to acess data in memory, some are direct and some are indirect. Each
