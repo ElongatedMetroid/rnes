@@ -66,7 +66,7 @@ impl olc::Application for Test6502 {
         self.nes.bus.ram[0xFFFC] = 0x00;
         self.nes.bus.ram[0xFFFD] = 0x80;
 
-        self.map_asm = self.nes.disassemble(0x0000, 0xFFFF);
+        self.map_asm = self.nes.disassemble(0x8000, 0xFFFF);
 
         self.nes.reset();
 

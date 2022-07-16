@@ -317,70 +317,70 @@ impl Nes6502 {
             else if self.lookup[opcode as usize].addrmode == AddressMode::IMM {
                 value = self.read(addr as u16);
                 addr += 1;
-                s_inst = format!("{}#${:X} {{IMM}}", s_inst, value);
+                s_inst = format!("{}#${:02X} {{IMM}}", s_inst, value);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ZP0 {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
-                s_inst = format!("{}${:X} {{ZP0}}", s_inst, lo);
+                s_inst = format!("{}${:02X} {{ZP0}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ZPX {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
-                s_inst = format!("{}${:X}, X {{ZPX}}", s_inst, lo);
+                s_inst = format!("{}${:02X}, X {{ZPX}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ZPY {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
-                s_inst = format!("{}${:X}, Y {{ZPY}}", s_inst, lo);
+                s_inst = format!("{}${:02X}, Y {{ZPY}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IZX {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
-                s_inst = format!("{}(${:X}, X) {{IZX}}", s_inst, lo);
+                s_inst = format!("{}(${:02X}, X) {{IZX}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IZY {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
-                s_inst = format!("{}(${:X}), Y {{IZY}}", s_inst, lo);
+                s_inst = format!("{}(${:02X}), Y {{IZY}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ABS {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = self.read(addr as u16) as u16;
                 addr += 1;
-                s_inst = format!("{}${:X} {{ABS}}", s_inst, (hi << 8) | lo);
+                s_inst = format!("{}${:04X} {{ABS}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ABX {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = self.read(addr as u16) as u16;
                 addr += 1;
-                s_inst = format!("{}${:X}, X {{ABX}}", s_inst, (hi << 8) | lo);
+                s_inst = format!("{}${:04X}, X {{ABX}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ABY {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = self.read(addr as u16) as u16;
                 addr += 1;
-                s_inst = format!("{}${:X}, Y {{ABY}}", s_inst, (hi << 8) | lo);
+                s_inst = format!("{}${:04X}, Y {{ABY}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IND {
                 lo = self.read(addr as u16) as u16;
                 addr += 1;
                 hi = self.read(addr as u16) as u16;
                 addr += 1;
-                s_inst = format!("{}(${:X}) {{IND}}", s_inst, (hi << 8) | lo);
+                s_inst = format!("{}(${:04X}) {{IND}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::REL {
                 value = self.read(addr as u16);
                 addr += 1;
-                s_inst = format!("{}${:X} [${:X}] {{REL}}", s_inst, value, addr + value as u32);
+                s_inst = format!("{}${:X} [${:04X}] {{REL}}", s_inst, value, addr + value as u32);
             }
 
             map_lines.push(s_inst);
