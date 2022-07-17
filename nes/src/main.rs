@@ -50,7 +50,7 @@ impl Test6502 {
     fn draw_asm(&self, x: i32, y: i32) {
         let mut i = 0;
         for line in &self.map_asm {
-            olc::draw_string(x, y + i as i32, line.as_str(), olc::BLACK);
+            olc::draw_string(x, y + i as i32, line.as_str(), olc::BLACK).unwrap();
             i += 10;
         }
     }
@@ -91,8 +91,7 @@ impl olc::Application for Test6502 {
         self.draw_ram(2, 2, 0x0000, 16, 16);
         self.draw_ram(2, 182, 0x8000, 16, 16);
         self.draw_cpu(448, 2);
-
-        self.draw_asm(448, 72);
+        //self.draw_asm(448, 72);
 
         Ok(())
     }
@@ -101,6 +100,8 @@ impl olc::Application for Test6502 {
     }
 }
 
+
+// TODO: Switch to imgui
 fn main() {
     let mut test = Test6502 {
         nes: Nes6502::new(),

@@ -1,4 +1,4 @@
-use super::{Nes6502, Flags6502};
+use super::{Nes6502, Flags6502, addressing_modes::AddressMode};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum Opcode {
@@ -211,12 +211,33 @@ impl Nes6502 {
         1
     }
     /// arithmetic shift left
-    pub(super) fn ASL(&self) -> u8 {
-        todo!()
+    pub(super) fn ASL(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = (self.fetched as u16) << 1;
+        self.set_flag(Flags6502::C, (temp & 0xFF00) > 0);
+        self.set_flag(Flags6502::Z, (temp & 0xFF) == 0x00);
+        self.set_flag(Flags6502::N, (temp & 0x80) != 0);
+
+        // if implied addressing is being used
+        if self.lookup[self.opcode as usize].addrmode == AddressMode::IMP {
+            self.a = (temp & 0x00FF) as u8;
+        } else {
+            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+        }
+
+        0
     }
     /// bit test
-    pub(super) fn BIT(&self) -> u8 {
-        todo!()
+    pub(super) fn BIT(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.a & self.fetched;
+        self.set_flag(Flags6502::Z, temp == 0x00);
+        self.set_flag(Flags6502::N, (self.fetched & (1 << 7)) != 0);
+        self.set_flag(Flags6502::V, (self.fetched & (1 << 6)) != 0);
+
+        0
     }
     /// break / interrupt
     pub(super) fn BRK(&mut self) -> u8 {
@@ -380,20 +401,52 @@ impl Nes6502 {
         0
     }
     /// compare (with accumulator)
-    pub(super) fn CMP(&self) -> u8 {
-        todo!()
+    pub(super) fn CMP(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.a as u16 + self.fetched as u16;
+
+        self.set_flag(Flags6502::C, self.a >= self.fetched);
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        1
     }
     /// compare with X
-    pub(super) fn CPX(&self) -> u8 {
-        todo!()
+    pub(super) fn CPX(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.x as u16 + self.fetched as u16;
+
+        self.set_flag(Flags6502::C, self.x >= self.fetched);
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        1
     }
     /// compare with Y
-    pub(super) fn CPY(&self) -> u8 {
-        todo!()
+    pub(super) fn CPY(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.y as u16 + self.fetched as u16;
+
+        self.set_flag(Flags6502::C, self.y >= self.fetched);
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        1
     }
     // decrement
-    pub(super) fn DEC(&self) -> u8 {
-        todo!()
+    pub(super) fn DEC(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.fetched - 1;
+        self.write(self.addr_abs, temp & 0x00FF);
+        self.set_flag(Flags6502::Z, temp == 0x00);
+        self.set_flag(Flags6502::N, (temp & 0x80) != 0);
+
+        0
+
     }
     /// decrement X
     pub(super) fn DEX(&mut self) -> u8 {
@@ -598,6 +651,6 @@ impl Nes6502 {
         todo!()
     }
     pub(super) fn XXX(&self) -> u8 {
-        todo!()
+        0
     }
 }

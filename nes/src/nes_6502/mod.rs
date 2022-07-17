@@ -139,7 +139,7 @@ impl Nes6502 {
             // Increment program counter, we read the part we needed (the opcode byte)
             self.pc += 1;
 
-            println!("Executing instruction: {} ({:X})", self.lookup[self.opcode as usize].name, self.opcode);
+            println!("Executing instruction: {} ({:02X})", self.lookup[self.opcode as usize].name, self.opcode);
 
             // get number of cycles needed for the instruction
             self.cycles = self.lookup[self.opcode as usize].cycles;
