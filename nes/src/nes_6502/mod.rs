@@ -1,6 +1,3 @@
-// Opcodes are better in capitals change my mind
-#![allow(non_snake_case)]
-
 use std::{collections::BTreeMap, ops::RangeInclusive, time::Instant};
 
 use crate::bus::{Bus, MEM_SIZE};
@@ -77,6 +74,12 @@ struct Instruction {
     operate: Opcode,
     addrmode: AddressMode,
     cycles: u8,
+}
+
+impl Default for Nes6502 {
+    fn default() -> Self {
+        Self::new()    
+    }
 }
 
 impl Nes6502 {
@@ -175,7 +178,7 @@ impl Nes6502 {
         // this address contains the address we want to set our program counter to
         self.addr_abs = 0xFFFC;
         // get lo byte of the address
-        let lo = self.bus.read(self.addr_abs + 0) as u16;
+        let lo = self.bus.read(self.addr_abs) as u16;
         // get hi byte of the address
         let hi = self.bus.read(self.addr_abs + 1) as u16;
 
@@ -185,7 +188,7 @@ impl Nes6502 {
         self.x = 0;
         self.y = 0;
         self.stkp = 0xFD;
-        self.status = 0x00 | Flags6502::U as u8;
+        self.status = Flags6502::U as u8;
 
         self.addr_rel = 0x0000;
         self.addr_abs = 0x0000;
@@ -213,7 +216,7 @@ impl Nes6502 {
             // get the value of the new program counter; forces the program to jump to a 
             // known location set by the programmer to handle the interupt.
             self.addr_abs = 0xFFFE;
-            let lo = self.bus.read(self.addr_abs + 0) as u16;
+            let lo = self.bus.read(self.addr_abs) as u16;
             let hi = self.bus.read(self.addr_abs + 1) as u16;
             self.pc = (hi << 8) | lo;
 
@@ -238,7 +241,7 @@ impl Nes6502 {
         // get the value of the new program counter; forces the program to jump to a 
         // known location set by the programmer to handle the interupt.
         self.addr_abs = 0xFFFA;
-        let lo = self.bus.read(self.addr_abs + 0) as u16;
+        let lo = self.bus.read(self.addr_abs) as u16;
         let hi = self.bus.read(self.addr_abs + 1) as u16;
         self.pc = (hi << 8) | lo;
 
@@ -270,7 +273,7 @@ impl Nes6502 {
     // Convenience functions to access status register
     /// Returns the value of a specific bit of the status register
     pub fn get_flag(&self, f: Flags6502) -> u8 {
-        return if (self.status & f as u8) > 0 {
+        if (self.status & f as u8) > 0 {
             1
         } else {
             0

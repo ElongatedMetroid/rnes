@@ -441,7 +441,7 @@ impl Nes6502 {
         self.fetch();
 
         let temp = self.fetched - 1;
-        self.bus.write(self.addr_abs, temp & 0x00FF);
+        self.bus.write(self.addr_abs, temp);
         self.set_flag(Flags6502::Z, temp == 0x00);
         self.set_flag(Flags6502::N, (temp & 0x80) != 0);
 
@@ -593,7 +593,7 @@ impl Nes6502 {
         self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
         // set the overflow flag
         self.set_flag(Flags6502::V, ((temp ^ self.a as u16) & (temp ^ value) & 0x0080) != 0);
-        self.a = temp as u8 & 0x00FF;
+        self.a = temp as u8;
         1
     }
     /// set carry
@@ -651,7 +651,7 @@ impl Nes6502 {
         todo!()
     }
     pub(super) fn XXX(&mut self) -> u8 {
-        self.info.push(String::from(format!("{:02X}: Invalid Opcode at address {:04X}", self.opcode, self.addr_abs)));
+        self.info.push(format!("{:02X}: Invalid Opcode at address {:04X}", self.opcode, self.addr_abs));
 
         0
     }

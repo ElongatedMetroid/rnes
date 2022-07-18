@@ -6,6 +6,7 @@ const SCREEN_HEIGHT: f32 = 720.0;
 const SCREEN_WIDTH: f32 = 1080.0;
 
 fn main() {
+    // Create a new instance of the applications with defaults
     let app = app::App::default();
 
     let native_options = eframe::NativeOptions {
@@ -20,5 +21,6 @@ fn main() {
         ..Default::default()
     };
 
+    // Run our created application with the selected options
     eframe::run_native("rnes", native_options, Box::new( |_cc| Box::new(app)));
 }

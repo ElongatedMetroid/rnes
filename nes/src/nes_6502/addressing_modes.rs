@@ -1,6 +1,6 @@
 use super::Nes6502;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum AddressMode {
     IMP,
     ZP0,
@@ -132,7 +132,7 @@ impl Nes6502 {
         // adding x to it. Because if it has changed it changed due to 
         // overflow.
         if (self.addr_abs & 0xFF00) != (hi << 8) {
-            return 1;
+            1
         } else {
             0
         }
@@ -156,7 +156,7 @@ impl Nes6502 {
         self.addr_abs += self.y as u16;
         
         if (self.addr_abs & 0xFF00) != (hi << 8) {  
-            return 1;
+            1
         } else {
             0
         }
@@ -193,10 +193,10 @@ impl Nes6502 {
 
         // Simulate hardware bug
         if ptr_lo == 0x00FF {
-            self.addr_abs = ((self.bus.read(ptr & 0xFF00) as u16) << 8) | self.bus.read(ptr + 0) as u16;
+            self.addr_abs = ((self.bus.read(ptr & 0xFF00) as u16) << 8) | self.bus.read(ptr) as u16;
         } else { // Behave normally
             // Read the address the pointer contains
-            self.addr_abs = ((self.bus.read(ptr + 1) as u16) << 8) | self.bus.read(ptr + 0) as u16;
+            self.addr_abs = ((self.bus.read(ptr + 1) as u16) << 8) | self.bus.read(ptr) as u16;
         }
         
         0
@@ -236,7 +236,7 @@ impl Nes6502 {
         // read the data (because the address contains another address) of the lo byte of address + the y register
         let lo = self.bus.read((t as u16) & 0x00FF) as u16;
         // read the data the hi byte of the address + the y register
-        let hi = self.bus.read((t + 1 as u16) & 0x00FF) as u16;
+        let hi = self.bus.read((t + 1) & 0x00FF) as u16;
         
         // combine lo and hi
         self.addr_abs = (hi << 8) | lo;
@@ -244,7 +244,7 @@ impl Nes6502 {
 
         // check if the page has changed from the y offset
         if (self.addr_abs & 0xFF00) != (hi << 8) {
-            return 1;
+            1
         } else {
             0   
         }
