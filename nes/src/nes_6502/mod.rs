@@ -1,6 +1,8 @@
 // Opcodes are better in capitals change my mind
 #![allow(non_snake_case)]
 
+use std::{collections::BTreeMap, ops::RangeInclusive};
+
 use crate::bus::{Bus, MEM_SIZE};
 
 use self::{addressing_modes::AddressMode, opcodes::Opcode};
@@ -284,16 +286,17 @@ impl Nes6502 {
 
     /// Produces a hash map of strings, with keys equivalent to instruction
     /// start locations in memory, for the specified address range
-    pub fn disassemble(&mut self, n_start: u16, n_stop: u16) -> Vec<String> {
-        let mut addr= n_start as u32;
+    pub fn disassemble(&self, range: RangeInclusive<u16>) -> BTreeMap<u16, String> {
+        let mut addr = *range.start();
+        let end = *range.end();
+
         let mut value: u8 = 0x00;
         let mut lo: u16 = 0x00;
         let mut hi: u16 = 0x00;
-        let mut map_lines: Vec<String> = Vec::new();
-        let mut line_addr: u16 = 0;
+        let mut map_lines = BTreeMap::new();
 
-        while addr <= n_stop as u32 {
-            line_addr = addr as u16;
+        while addr <= end {
+            let line_addr = addr;
 
             // prefix line with instruction address
             let mut s_inst = format!("${:X}: ", addr);
@@ -372,10 +375,10 @@ impl Nes6502 {
             else if self.lookup[opcode as usize].addrmode == AddressMode::REL {
                 value = self.bus.read(addr as u16);
                 addr += 1;
-                s_inst = format!("{}${:X} [${:04X}] {{REL}}", s_inst, value, addr + value as u32);
+                s_inst = format!("{}${:X} [${:04X}] {{REL}}", s_inst, value, addr + value as u16);
             }
 
-            map_lines.push(s_inst);
+            map_lines.insert(line_addr, s_inst);
         }
 
         map_lines
