@@ -223,7 +223,7 @@ impl Nes6502 {
         if self.lookup[self.opcode as usize].addrmode == AddressMode::IMP {
             self.a = (temp & 0x00FF) as u8;
         } else {
-            self.write(self.addr_abs, (temp & 0x00FF) as u8);
+            self.bus.write(self.addr_abs, (temp & 0x00FF) as u8);
         }
 
         0
@@ -244,17 +244,17 @@ impl Nes6502 {
         self.pc += 1;
 
         self.set_flag(Flags6502::I, true);
-        self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.bus.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
         self.stkp -= 1;
-        self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.bus.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
         self.stkp -= 1;
 
         self.set_flag(Flags6502::B, true);
-        self.write(0x0100 + self.stkp as u16, self.status);
+        self.bus.write(0x0100 + self.stkp as u16, self.status);
         self.stkp -= 1;
         self.set_flag(Flags6502::B, false);
 
-        self.pc = self.read(0xFFFE) as u16 | ((self.read(0xFFFF) as u16) << 8);
+        self.pc = self.bus.read(0xFFFE) as u16 | ((self.bus.read(0xFFFF) as u16) << 8);
         
         0
     }
@@ -441,7 +441,7 @@ impl Nes6502 {
         self.fetch();
 
         let temp = self.fetched - 1;
-        self.write(self.addr_abs, temp & 0x00FF);
+        self.bus.write(self.addr_abs, temp & 0x00FF);
         self.set_flag(Flags6502::Z, temp == 0x00);
         self.set_flag(Flags6502::N, (temp & 0x80) != 0);
 
@@ -530,7 +530,7 @@ impl Nes6502 {
     /// push accumulator
     pub(super) fn PHA(&mut self) -> u8 {
         // the stack is hardcoded to start at location 0x0100 the stack pointer is an offset to it
-        self.write(0x0100 + self.stkp as u16, self.a);
+        self.bus.write(0x0100 + self.stkp as u16, self.a);
         self.stkp -= 1;
         0
     }
@@ -541,7 +541,7 @@ impl Nes6502 {
     /// pull accumulator
     pub(super) fn PLA(&mut self) -> u8{
         self.stkp += 1;
-        self.a = self.read(0x0100 + self.stkp as u16);
+        self.a = self.bus.read(0x0100 + self.stkp as u16);
         self.set_flag(Flags6502::Z, self.a == 0x00);
         self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
         0
@@ -562,14 +562,14 @@ impl Nes6502 {
     /// Restores the state of the processor before the interrupt occured
     pub(super) fn RTI(&mut self) -> u8 {
         self.stkp += 1;
-        self.status = self.read(0x0100 + self.stkp as u16);
+        self.status = self.bus.read(0x0100 + self.stkp as u16);
         self.status &= !(Flags6502::B as u8);
         self.status &= !(Flags6502::U as u8);
 
         self.stkp += 1;
-        self.pc = self.read(0x0100 + self.stkp as u16) as u16;
+        self.pc = self.bus.read(0x0100 + self.stkp as u16) as u16;
         self.stkp += 1;
-        self.pc |= (self.read(0x0100 + self.stkp as u16) as u16) << 8;
+        self.pc |= (self.bus.read(0x0100 + self.stkp as u16) as u16) << 8;
 
         0
     }
@@ -610,19 +610,19 @@ impl Nes6502 {
     }
     /// store accumulator
     pub(super) fn STA(&mut self) -> u8 {
-        self.write(self.addr_abs, self.a);
+        self.bus.write(self.addr_abs, self.a);
         
         0
     }
     /// store X
     pub(super) fn STX(&mut self) -> u8 {
-        self.write(self.addr_abs, self.x);
+        self.bus.write(self.addr_abs, self.x);
         
         0
     }
     /// store Y
     pub(super) fn STY(&mut self) -> u8 {
-        self.write(self.addr_abs, self.y);
+        self.bus.write(self.addr_abs, self.y);
         
         0
     }

@@ -133,7 +133,7 @@ impl Nes6502 {
         if self.cycles == 0 {
             // Read the next instruction byte, we use this to index the lookup table
             // to get the information needed to implement the instruction
-            self.opcode = self.read(self.pc);
+            self.opcode = self.bus.read(self.pc);
 
             self.set_flag(Flags6502::U, true);
             // Increment program counter, we read the part we needed (the opcode byte)
@@ -171,9 +171,9 @@ impl Nes6502 {
         // this address contains the address we want to set our program counter to
         self.addr_abs = 0xFFFC;
         // get lo byte of the address
-        let lo = self.read(self.addr_abs + 0) as u16;
+        let lo = self.bus.read(self.addr_abs + 0) as u16;
         // get hi byte of the address
-        let hi = self.read(self.addr_abs + 1) as u16;
+        let hi = self.bus.read(self.addr_abs + 1) as u16;
 
         self.pc = (hi << 8) | lo;
 
@@ -194,23 +194,23 @@ impl Nes6502 {
         // if interrupts are enabled
         if self.get_flag(Flags6502::I) == 0 {
             // push the program counter to the stack
-            self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+            self.bus.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
             self.stkp -= 1;
-            self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+            self.bus.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
             self.stkp -= 1;
 
             self.set_flag(Flags6502::B, false);
             self.set_flag(Flags6502::U, true);
             self.set_flag(Flags6502::I, true);
             // write the status to the stack
-            self.write(0x0100 + self.stkp as u16, self.status);
+            self.bus.write(0x0100 + self.stkp as u16, self.status);
             self.stkp -= 1;
 
             // get the value of the new program counter; forces the program to jump to a 
             // known location set by the programmer to handle the interupt.
             self.addr_abs = 0xFFFE;
-            let lo = self.read(self.addr_abs + 0) as u16;
-            let hi = self.read(self.addr_abs + 1) as u16;
+            let lo = self.bus.read(self.addr_abs + 0) as u16;
+            let hi = self.bus.read(self.addr_abs + 1) as u16;
             self.pc = (hi << 8) | lo;
 
             self.cycles = 7;
@@ -219,23 +219,23 @@ impl Nes6502 {
     /// Non-Maskable Interrupt Request - Same as irq but cannot be disabled
     pub fn nmi(&mut self) {
         // push the program counter to the stack
-        self.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.bus.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
         self.stkp -= 1;
-        self.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.bus.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
         self.stkp -= 1;
 
         self.set_flag(Flags6502::B, false);
         self.set_flag(Flags6502::U, true);
         self.set_flag(Flags6502::I, true);
         // write the status to the stack
-        self.write(0x0100 + self.stkp as u16, self.status);
+        self.bus.write(0x0100 + self.stkp as u16, self.status);
         self.stkp -= 1;
 
         // get the value of the new program counter; forces the program to jump to a 
         // known location set by the programmer to handle the interupt.
         self.addr_abs = 0xFFFA;
-        let lo = self.read(self.addr_abs + 0) as u16;
-        let hi = self.read(self.addr_abs + 1) as u16;
+        let lo = self.bus.read(self.addr_abs + 0) as u16;
+        let hi = self.bus.read(self.addr_abs + 1) as u16;
         self.pc = (hi << 8) | lo;
 
         self.cycles = 7;
@@ -257,18 +257,10 @@ impl Nes6502 {
         // If the addressing is implied ( no additional data; nothing to fetch )
         if self.lookup[self.opcode as usize].addrmode != AddressMode::IMP {
             // set fetched to the contents of the address
-            self.fetched = self.read(self.addr_abs);
+            self.fetched = self.bus.read(self.addr_abs);
         }
         // returned the fetched data
         self.fetched
-    }
-
-    // Linkage to the communication bus
-    pub fn read(&self, addr: u16) -> u8 {
-        self.bus.read(addr)
-    }
-    pub fn write(&mut self, addr: u16, data: u8) {
-        self.bus.write(addr, data);
     }
 
     // Convenience functions to access status register
@@ -307,7 +299,7 @@ impl Nes6502 {
             let mut s_inst = format!("${:X}: ", addr);
 
             // read instruction and get its readable name
-            let opcode = self.read(addr as u16);
+            let opcode = self.bus.read(addr as u16);
             addr += 1;
             s_inst = format!("{}{} ", s_inst, self.lookup[opcode as usize].name); 
 
@@ -315,70 +307,70 @@ impl Nes6502 {
                 s_inst = format!("{} {{IMP}}", s_inst);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IMM {
-                value = self.read(addr as u16);
+                value = self.bus.read(addr as u16);
                 addr += 1;
                 s_inst = format!("{}#${:02X} {{IMM}}", s_inst, value);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ZP0 {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}${:02X} {{ZP0}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ZPX {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}${:02X}, X {{ZPX}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ZPY {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}${:02X}, Y {{ZPY}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IZX {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}(${:02X}, X) {{IZX}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IZY {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 hi = 0x00;
                 s_inst = format!("{}(${:02X}), Y {{IZY}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ABS {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16) as u16;
+                hi = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 s_inst = format!("{}${:04X} {{ABS}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ABX {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16) as u16;
+                hi = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 s_inst = format!("{}${:04X}, X {{ABX}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::ABY {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16) as u16;
+                hi = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 s_inst = format!("{}${:04X}, Y {{ABY}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::IND {
-                lo = self.read(addr as u16) as u16;
+                lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = self.read(addr as u16) as u16;
+                hi = self.bus.read(addr as u16) as u16;
                 addr += 1;
                 s_inst = format!("{}(${:04X}) {{IND}}", s_inst, (hi << 8) | lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::REL {
-                value = self.read(addr as u16);
+                value = self.bus.read(addr as u16);
                 addr += 1;
                 s_inst = format!("{}${:X} [${:04X}] {{REL}}", s_inst, value, addr + value as u32);
             }
