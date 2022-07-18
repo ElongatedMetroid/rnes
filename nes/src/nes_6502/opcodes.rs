@@ -650,7 +650,9 @@ impl Nes6502 {
     pub(super) fn TYA(&self) -> u8 {
         todo!()
     }
-    pub(super) fn XXX(&self) -> u8 {
+    pub(super) fn XXX(&mut self) -> u8 {
+        self.info.push(String::from(format!("{:02X}: Invalid Opcode at address {:04X}", self.opcode, self.addr_abs)));
+
         0
     }
 }

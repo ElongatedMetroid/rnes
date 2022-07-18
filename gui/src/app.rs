@@ -1,18 +1,24 @@
+// TODO: Comment EVERYTHING, and adapt everything to a better rust style
+
 extern crate nes;
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fs::File, io::Write};
 
 use eframe::{
-    egui::{self, Key},
+    egui::{self, Key, Rect},
 };
 
-use egui::Color32;
+use egui::{Color32, Pos2};
 use nes::{Nes6502, Flags6502};
+
+const NES_WIDTH: f32 = 256.0;
+const NES_HEIGHT: f32 = 240.0;
 
 struct GuiToggles {
     mem_view: bool,
     disasm_view: bool,
     reg_view: bool,
+    info_view: bool,
 }
 
 pub struct App {
@@ -34,6 +40,7 @@ impl Default for App {
                 mem_view: false,
                 disasm_view: false,
                 reg_view: false,
+                info_view: false,
             },
         };
 
@@ -41,6 +48,7 @@ impl Default for App {
             app.gui_toggles.mem_view = true;
             app.gui_toggles.disasm_view = true;
             app.gui_toggles.reg_view = true;
+            app.gui_toggles.info_view = true;
         }
 
         let test_prog: Vec<u8> = vec![0xA2, 0x0A, 0x8E, 0x00, 0x00, 0xA2, 0x03, 0x8E, 0x01, 0x00, 0xAC, 0x00, 0x00, 0xA9, 0x00, 0x18, 0x6D, 0x01, 0x00, 0x88, 0xD0, 0xFA, 0x8D, 0x02, 0x00, 0xEA, 0xEA, 0xEA];
@@ -82,15 +90,15 @@ impl eframe::App for App {
                     if ui.button("View Registers").clicked() {
                         self.gui_toggles.reg_view = true;
                     }
+                    if ui.button("View Info").clicked() {
+                        self.gui_toggles.info_view = true;
+                    }
                 });
             });
 
         egui::Window::new("Game")
-            .collapsible(true)
-            .resizable(false)
-            .default_size([256.0 * 2.0, 240.0 * 2.0])
             .show(ctx, |ui| {
-                ui.label("af");
+                
             });
 
         if self.gui_toggles.mem_view == true {
@@ -117,16 +125,11 @@ impl eframe::App for App {
             }    
 
             egui::Window::new("Memory View") 
+                .open(&mut self.gui_toggles.mem_view)
                 .collapsible(true)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        if ui.button("Close").clicked() {
-                            self.gui_toggles.mem_view = false;
-                        }
-
-                        ui.label("Press V to Change the Viewable Memory Range");
-                    });
+                    ui.label("Press V to Change the Viewable Memory Range");
 
                     ui.separator();
 
@@ -137,14 +140,23 @@ impl eframe::App for App {
         }
         if self.gui_toggles.disasm_view == true {
             egui::Window::new("Disassembly View")
+                .open(&mut self.gui_toggles.disasm_view)
                 .collapsible(true)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        if ui.button("Close").clicked() {
-                            self.gui_toggles.disasm_view = false;
-                        }
-                    });
+                    if ui.button("Dump to file").clicked() {
+                        let mut dump_file = match File::create("disassembly_dump.txt") {
+                            Ok(v) => v,
+                            Err(e) => {
+                                self.nes.info.push(String::from(format!("Could not create file: {}", e)));
+                                return ();
+                            }
+                        };
+
+                        self.map_asm.iter().for_each(|(_, s)| {
+                            write!(dump_file, "{}\n", s).unwrap();
+                        })
+                    }
 
                     self.map_asm
                         .range(self.nes.pc.checked_sub(8).unwrap_or(0)..)
@@ -156,17 +168,10 @@ impl eframe::App for App {
         }
         if self.gui_toggles.reg_view == true {
             egui::Window::new("Register View")
+                .open(&mut self.gui_toggles.reg_view)
                 .collapsible(true)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    ui.horizontal(|ui| {
-                        if ui.button("Close").clicked() {
-                            self.gui_toggles.reg_view = false;
-                        }
-                    });
-
-                    ui.separator();
-
                     ui.horizontal(|ui| {
                         ui.colored_label(if self.nes.get_flag(Flags6502::N) == 1 {Color32::GREEN} else { Color32:: RED }, "N");
                         ui.colored_label(if self.nes.get_flag(Flags6502::V) == 1 {Color32::GREEN} else { Color32:: RED }, "V");
@@ -185,6 +190,31 @@ impl eframe::App for App {
                         ui.label(format!("Y: ${:02X} [{:03}]", self.nes.y, self.nes.y));
                         ui.label(format!("Stack Ptr ${:04X}", self.nes.stkp));
                     }) 
+                });
+        }
+        if self.gui_toggles.info_view == true {
+            egui::Window::new("Info View")
+                .open(&mut self.gui_toggles.info_view)
+                .collapsible(true)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    if ui.button("Dump to file").clicked() {
+                        let mut dump_file = match File::create("info_dump.txt") {
+                            Ok(v) => v,
+                            Err(e) => { 
+                                self.nes.info.push(String::from(format!("Could not create file: {}", e)));
+                                return ();
+                            },
+                        };
+
+                        for line in &self.nes.info {
+                            write!(dump_file, "{}\n", line.as_str()).unwrap();
+                        }
+                    }
+
+                    for info in &self.nes.info[self.nes.info.len().checked_sub(10).unwrap_or(0)..self.nes.info.len()] {
+                        ui.label(info);
+                    }
                 });
         }
         

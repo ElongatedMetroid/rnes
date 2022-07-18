@@ -1,7 +1,7 @@
 // Opcodes are better in capitals change my mind
 #![allow(non_snake_case)]
 
-use std::{collections::BTreeMap, ops::RangeInclusive};
+use std::{collections::BTreeMap, ops::RangeInclusive, time::Instant};
 
 use crate::bus::{Bus, MEM_SIZE};
 
@@ -67,6 +67,9 @@ pub struct Nes6502 {
     /// Counts how many cycles the instruction has remaining
     cycles: u8,
     lookup: Vec<Instruction>,
+
+    /// Put all things you would usually println into here
+    pub info: Vec<String>,
 }
 
 struct Instruction {
@@ -94,6 +97,7 @@ impl Nes6502 {
             opcode: 0x00,
             cycles: 0,
             lookup: Vec::new(),
+            info: Vec::new(),
 
             bus: Bus {
                 ram
@@ -140,8 +144,6 @@ impl Nes6502 {
             self.set_flag(Flags6502::U, true);
             // Increment program counter, we read the part we needed (the opcode byte)
             self.pc += 1;
-
-            println!("Executing instruction: {} ({:02X})", self.lookup[self.opcode as usize].name, self.opcode);
 
             // get number of cycles needed for the instruction
             self.cycles = self.lookup[self.opcode as usize].cycles;
