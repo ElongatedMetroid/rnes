@@ -62,7 +62,7 @@ impl Nes6502 {
     /// zero page is where the high byte is zero (ex. 0x00FF)
     pub(super) fn zp0(&mut self) -> u8 {
         // Read the address from the program counter 
-        self.addr_abs = self.bus.read(self.pc) as u16;
+        self.addr_abs = self.bus.cpu_read(self.pc, false) as u16;
 
         // increment the program counter
         self.pc += 1;
@@ -74,7 +74,7 @@ impl Nes6502 {
     }
     /// Zero page addressing with x register offset
     pub(super) fn zpx(&mut self) -> u8 {
-        self.addr_abs = (self.bus.read(self.pc) + self.x) as u16;
+        self.addr_abs = (self.bus.cpu_read(self.pc, false) + self.x) as u16;
 
         self.pc += 1;
         self.addr_abs &= 0x00FF;
@@ -83,7 +83,7 @@ impl Nes6502 {
     }
     /// Zero page addressing with y register offset
     pub(super) fn zpy(&mut self) -> u8 {
-        self.addr_abs = (self.bus.read(self.pc) + self.y) as u16;
+        self.addr_abs = (self.bus.cpu_read(self.pc, false) + self.y) as u16;
 
         self.pc += 1;
         self.addr_abs &= 0x00FF;
@@ -96,12 +96,12 @@ impl Nes6502 {
     /// (3) the hi byte of the absolute address.
     pub(super) fn abs(&mut self) -> u8 {
         // Get lo byte of the instruction
-        let lo = self.bus.read(self.pc) as u16;
+        let lo = self.bus.cpu_read(self.pc, false) as u16;
 
         // increment pc so we can get the hi byte
         self.pc += 1;
         
-        let hi = self.bus.read(self.pc) as u16;
+        let hi = self.bus.cpu_read(self.pc, false) as u16;
         
         self.pc += 1;
 
@@ -113,12 +113,12 @@ impl Nes6502 {
     /// Absolute addressing with x register offset
     pub(super) fn abx(&mut self) -> u8 {
         // Get lo byte of the instruction
-        let lo = self.bus.read(self.pc) as u16;
+        let lo = self.bus.cpu_read(self.pc, false) as u16;
 
         // increment pc so we can get the hi byte
         self.pc += 1;
         
-        let hi = self.bus.read(self.pc) as u16;
+        let hi = self.bus.cpu_read(self.pc, false) as u16;
 
         self.pc += 1;
 
@@ -140,13 +140,13 @@ impl Nes6502 {
     /// Absolute addressing with y register offset
     pub(super) fn aby(&mut self) -> u8 {
         // Get lo byte of the instruction
-        let lo = self.bus.read(self.pc) as u16;
+        let lo = self.bus.cpu_read(self.pc, false) as u16;
 
         // increment pc so we can get the hi byte
         self.pc += 1;
         
         // Get the high byte of the instruction
-        let hi = self.bus.read(self.pc) as u16;
+        let hi = self.bus.cpu_read(self.pc, false) as u16;
         
         // move pc to next instruction
         self.pc += 1;
@@ -180,11 +180,11 @@ impl Nes6502 {
     /// page, yeilding an invailid actual address
     pub(super) fn ind(&mut self) -> u8 {
         // get lo byte of the pointer
-        let ptr_lo = self.bus.read(self.pc) as u16;
+        let ptr_lo = self.bus.cpu_read(self.pc, false) as u16;
         // increment program counter to get hi byte of the pointer
         self.pc += 1;
         // get hi byte of the pointer
-        let ptr_hi = self.bus.read(self.pc) as u16;
+        let ptr_hi = self.bus.cpu_read(self.pc, false) as u16;
         // move the program counter to the next instruction
         self.pc += 1;
 
@@ -193,10 +193,10 @@ impl Nes6502 {
 
         // Simulate hardware bug
         if ptr_lo == 0x00FF {
-            self.addr_abs = ((self.bus.read(ptr & 0xFF00) as u16) << 8) | self.bus.read(ptr) as u16;
+            self.addr_abs = ((self.bus.cpu_read(ptr & 0xFF00, false) as u16) << 8) | self.bus.cpu_read(ptr, false) as u16;
         } else { // Behave normally
             // Read the address the pointer contains
-            self.addr_abs = ((self.bus.read(ptr + 1) as u16) << 8) | self.bus.read(ptr) as u16;
+            self.addr_abs = ((self.bus.cpu_read(ptr + 1, false) as u16) << 8) | self.bus.cpu_read(ptr, false) as u16;
         }
         
         0
@@ -207,15 +207,15 @@ impl Nes6502 {
     /// from this location
     pub(super) fn izx(&mut self) -> u8 {
         // The supplied address located in zero page references somewhere in memory
-        let t = self.bus.read(self.pc) as u16;
+        let t = self.bus.cpu_read(self.pc, false) as u16;
         // increment program counter to position it at next instruction
         self.pc += 1;
 
         // Read the 16-bit address from zero page
         // read the data (because the address contains another address) of the lo byte of address + the x register
-        let lo = self.bus.read(((t + self.x as u16) as u16) & 0x00FF) as u16;
+        let lo = self.bus.cpu_read(((t + self.x as u16) as u16) & 0x00FF, false) as u16;
         // read the data the hi byte of the address + the x register
-        let hi = self.bus.read(((t + (self.x + 1) as u16) as u16) & 0x00FF) as u16;
+        let hi = self.bus.cpu_read(((t + (self.x + 1) as u16) as u16) & 0x00FF, false) as u16;
         
         // combine lo and hi
         self.addr_abs = (hi << 8) | lo;
@@ -228,15 +228,15 @@ impl Nes6502 {
     /// clock cycle if required
     pub(super) fn izy(&mut self) -> u8 {
         // The supplied address located in zero page references somewhere in memory
-        let t = self.bus.read(self.pc) as u16;
+        let t = self.bus.cpu_read(self.pc, false) as u16;
         // increment program counter to position it at next instruction
         self.pc += 1;
 
         // Read the 16-bit address from zero page
         // read the data (because the address contains another address) of the lo byte of address + the y register
-        let lo = self.bus.read((t as u16) & 0x00FF) as u16;
+        let lo = self.bus.cpu_read((t as u16) & 0x00FF, false) as u16;
         // read the data the hi byte of the address + the y register
-        let hi = self.bus.read((t + 1) & 0x00FF) as u16;
+        let hi = self.bus.cpu_read((t + 1) & 0x00FF, false) as u16;
         
         // combine lo and hi
         self.addr_abs = (hi << 8) | lo;
@@ -255,7 +255,7 @@ impl Nes6502 {
     /// branch to any address in the addressable range
     pub(super) fn rel(&mut self) -> u8 {
         // Read the address contained in the program counter
-        self.addr_rel = self.bus.read(self.pc) as u16;
+        self.addr_rel = self.bus.cpu_read(self.pc, false) as u16;
         // move program counter to next insturction
         self.pc += 1;
         // Check if the address is signed

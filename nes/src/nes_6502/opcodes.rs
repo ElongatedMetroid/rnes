@@ -223,7 +223,7 @@ impl Nes6502 {
         if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
             self.a = (temp & 0x00FF) as u8;
         } else {
-            self.bus.write(self.addr_abs, (temp & 0x00FF) as u8);
+            self.bus.cpu_write(self.addr_abs, (temp & 0x00FF) as u8);
         }
 
         0
@@ -244,17 +244,17 @@ impl Nes6502 {
         self.pc += 1;
 
         self.set_flag(Flags6502::I, true);
-        self.bus.write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, ((self.pc >> 8) & 0x00FF) as u8);
         self.stkp -= 1;
-        self.bus.write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, (self.pc & 0x00FF) as u8);
         self.stkp -= 1;
 
         self.set_flag(Flags6502::B, true);
-        self.bus.write(0x0100 + self.stkp as u16, self.status);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, self.status);
         self.stkp -= 1;
         self.set_flag(Flags6502::B, false);
 
-        self.pc = self.bus.read(0xFFFE) as u16 | ((self.bus.read(0xFFFF) as u16) << 8);
+        self.pc = self.bus.cpu_read(0xFFFE, false) as u16 | ((self.bus.cpu_read(0xFFFF, false) as u16) << 8);
         
         0
     }
@@ -441,7 +441,7 @@ impl Nes6502 {
         self.fetch();
 
         let temp = self.fetched - 1;
-        self.bus.write(self.addr_abs, temp);
+        self.bus.cpu_write(self.addr_abs, temp);
         self.set_flag(Flags6502::Z, temp == 0x00);
         self.set_flag(Flags6502::N, (temp & 0x80) != 0);
 
@@ -480,7 +480,7 @@ impl Nes6502 {
         self.fetch();
 
         let temp = self.fetched as u16 + 1;
-        self.bus.write(self.addr_abs, temp as u8);
+        self.bus.cpu_write(self.addr_abs, temp as u8);
         
         self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
         self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
@@ -515,9 +515,9 @@ impl Nes6502 {
         self.pc -= 1;
 
         // write the program counter to the stack
-        self.bus.write(0x0100 + self.stkp as u16, (self.pc >> 8) as u8);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, (self.pc >> 8) as u8);
         self.stkp -= 1;
-        self.bus.write(0x0100 + self.stkp as u16, self.pc as u8);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, self.pc as u8);
         self.stkp -= 1;
 
         self.pc = self.addr_abs;
@@ -562,7 +562,7 @@ impl Nes6502 {
         if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
             self.a = temp as u8;
         } else {
-            self.bus.write(self.addr_abs, temp as u8);
+            self.bus.cpu_write(self.addr_abs, temp as u8);
         }
 
         0
@@ -587,13 +587,13 @@ impl Nes6502 {
     /// push accumulator
     pub(super) fn pha(&mut self) -> u8 {
         // the stack is hardcoded to start at location 0x0100 the stack pointer is an offset to it
-        self.bus.write(0x0100 + self.stkp as u16, self.a);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, self.a);
         self.stkp -= 1;
         0
     }
     /// push processor status (SR)
     pub(super) fn php(&mut self) -> u8 {
-        self.bus.write(0x0100 + self.stkp as u16, self.status | Flags6502::B as u8 | Flags6502::U as u8);
+        self.bus.cpu_write(0x0100 + self.stkp as u16, self.status | Flags6502::B as u8 | Flags6502::U as u8);
 
         self.set_flag(Flags6502::B, false);
         self.set_flag(Flags6502::U, false);
@@ -605,7 +605,7 @@ impl Nes6502 {
     /// pull accumulator
     pub(super) fn pla(&mut self) -> u8{
         self.stkp += 1;
-        self.a = self.bus.read(0x0100 + self.stkp as u16);
+        self.a = self.bus.cpu_read(0x0100 + self.stkp as u16, false);
         self.set_flag(Flags6502::Z, self.a == 0x00);
         self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
         0
@@ -614,7 +614,7 @@ impl Nes6502 {
     pub(super) fn plp(&mut self) -> u8 {
         self.stkp += 1;
 
-        self.status = self.bus.read(0x0100 + self.stkp as u16);
+        self.status = self.bus.cpu_read(0x0100 + self.stkp as u16, false);
 
         self.set_flag(Flags6502::U, true);
 
@@ -632,7 +632,7 @@ impl Nes6502 {
         if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
             self.a = temp as u8;
         } else {
-            self.bus.write(self.addr_abs, temp as u8);
+            self.bus.cpu_write(self.addr_abs, temp as u8);
         }
 
         0
@@ -649,7 +649,7 @@ impl Nes6502 {
         if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
             self.a = temp as u8;
         } else {
-            self.bus.write(self.addr_abs, temp as u8);
+            self.bus.cpu_write(self.addr_abs, temp as u8);
         }
 
         0
@@ -658,23 +658,23 @@ impl Nes6502 {
     /// Restores the state of the processor before the interrupt occured
     pub(super) fn rti(&mut self) -> u8 {
         self.stkp += 1;
-        self.status = self.bus.read(0x0100 + self.stkp as u16);
+        self.status = self.bus.cpu_read(0x0100 + self.stkp as u16, false);
         self.status &= !(Flags6502::B as u8);
         self.status &= !(Flags6502::U as u8);
 
         self.stkp += 1;
-        self.pc = self.bus.read(0x0100 + self.stkp as u16) as u16;
+        self.pc = self.bus.cpu_read(0x0100 + self.stkp as u16, false) as u16;
         self.stkp += 1;
-        self.pc |= (self.bus.read(0x0100 + self.stkp as u16) as u16) << 8;
+        self.pc |= (self.bus.cpu_read(0x0100 + self.stkp as u16, false) as u16) << 8;
 
         0
     }
     /// return from subroutine
     pub(super) fn rts(&mut self) -> u8 {
         self.stkp += 1;
-        self.pc = self.bus.read(0x0100 + self.stkp as u16) as u16;
+        self.pc = self.bus.cpu_read(0x0100 + self.stkp as u16, false) as u16;
         self.stkp += 1;
-        self.pc |= (self.bus.read(0x0100 + self.stkp as u16) as u16) << 8;
+        self.pc |= (self.bus.cpu_read(0x0100 + self.stkp as u16, false) as u16) << 8;
         
         self.pc += 1;
 
@@ -716,19 +716,19 @@ impl Nes6502 {
     }
     /// store accumulator
     pub(super) fn sta(&mut self) -> u8 {
-        self.bus.write(self.addr_abs, self.a);
+        self.bus.cpu_write(self.addr_abs, self.a);
         
         0
     }
     /// store X
     pub(super) fn stx(&mut self) -> u8 {
-        self.bus.write(self.addr_abs, self.x);
+        self.bus.cpu_write(self.addr_abs, self.x);
         
         0
     }
     /// store Y
     pub(super) fn sty(&mut self) -> u8 {
-        self.bus.write(self.addr_abs, self.y);
+        self.bus.cpu_write(self.addr_abs, self.y);
         
         0
     }

@@ -147,7 +147,7 @@ impl eframe::App for App {
                 // loop 16 times (for each row)
                 for _ in 0..16 {
                     // Write the value of addr onto the end of the string
-                    write!(&mut str, " {:02X}", self.nes.bus.read(addr)).unwrap();
+                    write!(&mut str, " {:02X}", self.nes.bus.cpu_read(addr, true)).unwrap();
                     // Increment addr
                     addr += 1;
                 }
