@@ -76,7 +76,7 @@ impl Default for App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Set visuals to dark "theme"
         ctx.set_visuals(egui::Visuals::dark());
 
@@ -241,7 +241,7 @@ impl eframe::App for App {
                     // Credit this rando for creating the project
                     ui.label("Created by Nate, GPLv3 2022-2022");
                     // Add a link to the hub
-                    ui.add(github_link_file!("(source code)", "https://github.com/NateNoNameSOFT/rnes"));
+                    ui.add(github_link_file!("https://github.com/NateNoNameSOFT/rnes/", "(source code)"));
 
                     ui.separator();
 

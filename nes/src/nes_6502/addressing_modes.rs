@@ -2,35 +2,35 @@ use super::Nes6502;
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum AddressMode {
-    IMP,
-    ZP0,
-    ZPX,
-    ZPY,
-    ABS,
-    ABX,
-    ABY,
-    IMM,
-    IND,
-    IZX,
-    IZY,
-    REL,
+    Imp,
+    Zp0,
+    Zpx,
+    Zpy,
+    Abs,
+    Abx,
+    Aby,
+    Imm,
+    Ind,
+    Izx,
+    Izy,
+    Rel,
 }
 
 impl AddressMode {
     pub fn execute(mode: AddressMode, nes: &mut Nes6502) -> u8 {
         match mode {
-            AddressMode::IMP => nes.IMP(),
-            AddressMode::ZP0 => nes.ZP0(),
-            AddressMode::ZPX => nes.ZPX(),
-            AddressMode::ZPY => nes.ZPY(),
-            AddressMode::ABS => nes.ABS(),
-            AddressMode::ABX => nes.ABX(),
-            AddressMode::ABY => nes.ABY(),
-            AddressMode::IMM => nes.IMM(),
-            AddressMode::IND => nes.IND(),
-            AddressMode::IZX => nes.IZX(),
-            AddressMode::IZY => nes.IZY(),
-            AddressMode::REL => nes.REL(),
+            AddressMode::Imp => nes.imp(),
+            AddressMode::Zp0 => nes.zp0(),
+            AddressMode::Zpx => nes.zpx(),
+            AddressMode::Zpy => nes.zpy(),
+            AddressMode::Abs => nes.abs(),
+            AddressMode::Abx => nes.abx(),
+            AddressMode::Aby => nes.aby(),
+            AddressMode::Imm => nes.imm(),
+            AddressMode::Ind => nes.ind(),
+            AddressMode::Izx => nes.izx(),
+            AddressMode::Izy => nes.izy(),
+            AddressMode::Rel => nes.rel(),
         }
     }
 }
@@ -53,14 +53,14 @@ impl Nes6502 {
 
     /// No data as part of the instruction
     /// It could be operating upon the accumulator though
-    pub(super) fn IMP(&mut self) -> u8 {
+    pub(super) fn imp(&mut self) -> u8 {
         self.fetched = self.a;
         0
     }
     /// Zero page addressing: the byte of data we are interesting in reading
     /// for this instruction can be located somewhere in page zero of memory
     /// zero page is where the high byte is zero (ex. 0x00FF)
-    pub(super) fn ZP0(&mut self) -> u8 {
+    pub(super) fn zp0(&mut self) -> u8 {
         // Read the address from the program counter 
         self.addr_abs = self.bus.read(self.pc) as u16;
 
@@ -73,7 +73,7 @@ impl Nes6502 {
         0
     }
     /// Zero page addressing with x register offset
-    pub(super) fn ZPX(&mut self) -> u8 {
+    pub(super) fn zpx(&mut self) -> u8 {
         self.addr_abs = (self.bus.read(self.pc) + self.x) as u16;
 
         self.pc += 1;
@@ -82,7 +82,7 @@ impl Nes6502 {
         0
     }
     /// Zero page addressing with y register offset
-    pub(super) fn ZPY(&mut self) -> u8 {
+    pub(super) fn zpy(&mut self) -> u8 {
         self.addr_abs = (self.bus.read(self.pc) + self.y) as u16;
 
         self.pc += 1;
@@ -94,7 +94,7 @@ impl Nes6502 {
     /// The instruction for this has to be 3 bytes long to store
     /// (1) the opcode, (2) the lo byte of the absolute address, and
     /// (3) the hi byte of the absolute address.
-    pub(super) fn ABS(&mut self) -> u8 {
+    pub(super) fn abs(&mut self) -> u8 {
         // Get lo byte of the instruction
         let lo = self.bus.read(self.pc) as u16;
 
@@ -111,7 +111,7 @@ impl Nes6502 {
         0
     }
     /// Absolute addressing with x register offset
-    pub(super) fn ABX(&mut self) -> u8 {
+    pub(super) fn abx(&mut self) -> u8 {
         // Get lo byte of the instruction
         let lo = self.bus.read(self.pc) as u16;
 
@@ -138,7 +138,7 @@ impl Nes6502 {
         }
     }
     /// Absolute addressing with y register offset
-    pub(super) fn ABY(&mut self) -> u8 {
+    pub(super) fn aby(&mut self) -> u8 {
         // Get lo byte of the instruction
         let lo = self.bus.read(self.pc) as u16;
 
@@ -163,7 +163,7 @@ impl Nes6502 {
     }
     /// Immediate mode addressing means the data is immediatly supplied
     /// as part of the instruction; its going to be the next byte
-    pub(super) fn IMM(&mut self) -> u8 {
+    pub(super) fn imm(&mut self) -> u8 {
         // set addr_abs to self.pc because the data is the next byte
         // of the instruction (pc is already set to the next byte), 
         // so the instruction knows to read the data from there
@@ -178,7 +178,7 @@ impl Nes6502 {
     /// actual address we need to cross a page boundary. This doesnt actually
     /// work on the chip as designed, instead it wraps back around in the same
     /// page, yeilding an invailid actual address
-    pub(super) fn IND(&mut self) -> u8 {
+    pub(super) fn ind(&mut self) -> u8 {
         // get lo byte of the pointer
         let ptr_lo = self.bus.read(self.pc) as u16;
         // increment program counter to get hi byte of the pointer
@@ -205,7 +205,7 @@ impl Nes6502 {
     /// The supplied 8-bit address is offset by X Register to index
     /// a location in page 0x00. The actual 16-bit address is read 
     /// from this location
-    pub(super) fn IZX(&mut self) -> u8 {
+    pub(super) fn izx(&mut self) -> u8 {
         // The supplied address located in zero page references somewhere in memory
         let t = self.bus.read(self.pc) as u16;
         // increment program counter to position it at next instruction
@@ -226,7 +226,7 @@ impl Nes6502 {
     /// This is different from Indirect addressing with x offset;
     /// if the offset causes a change in page then an additional 
     /// clock cycle if required
-    pub(super) fn IZY(&mut self) -> u8 {
+    pub(super) fn izy(&mut self) -> u8 {
         // The supplied address located in zero page references somewhere in memory
         let t = self.bus.read(self.pc) as u16;
         // increment program counter to position it at next instruction
@@ -253,7 +253,7 @@ impl Nes6502 {
     /// instructions, the address must reside within -128 to 
     /// +127 of the branch instruction, i.e. you cant directly
     /// branch to any address in the addressable range
-    pub(super) fn REL(&mut self) -> u8 {
+    pub(super) fn rel(&mut self) -> u8 {
         // Read the address contained in the program counter
         self.addr_rel = self.bus.read(self.pc) as u16;
         // move program counter to next insturction
