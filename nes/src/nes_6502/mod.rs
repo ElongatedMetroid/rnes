@@ -295,9 +295,9 @@ impl Nes6502 {
         let mut addr = *range.start();
         let end = *range.end();
 
-        let mut value: u8 = 0x00;
-        let mut lo: u16 = 0x00;
-        let mut hi: u16 = 0x00;
+        let mut value: u8;
+        let mut lo: u16;
+        let mut hi: u16;
         let mut map_lines = BTreeMap::new();
 
         while addr <= end {
@@ -322,31 +322,26 @@ impl Nes6502 {
             else if self.lookup[opcode as usize].addrmode == AddressMode::Zp0 {
                 lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = 0x00;
                 s_inst = format!("{}${:02X} {{ZP0}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::Zpx {
                 lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = 0x00;
                 s_inst = format!("{}${:02X}, X {{ZPX}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::Zpy {
                 lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = 0x00;
                 s_inst = format!("{}${:02X}, Y {{ZPY}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::Izx {
                 lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = 0x00;
                 s_inst = format!("{}(${:02X}, X) {{IZX}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::Izy {
                 lo = self.bus.read(addr as u16) as u16;
                 addr += 1;
-                hi = 0x00;
                 s_inst = format!("{}(${:02X}), Y {{IZY}}", s_inst, lo);
             }
             else if self.lookup[opcode as usize].addrmode == AddressMode::Abs {

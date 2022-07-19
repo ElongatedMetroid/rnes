@@ -1,5 +1,3 @@
-// TODO: Comment EVERYTHING, and adapt everything to a better rust style
-
 extern crate nes;
 
 use std::{collections::BTreeMap, fs::File, io::Write};
@@ -88,6 +86,18 @@ impl eframe::App for App {
                     break;
                 }
             }
+        }
+
+        if ctx.input().key_pressed(Key::R) {
+            self.nes.reset();
+        }
+
+        if ctx.input().key_pressed(Key::I) {
+            self.nes.irq();
+        }
+
+        if ctx.input().key_pressed(Key::N) {
+            self.nes.nmi();
         }
 
         // The central panel will hold buttons to access debug options
@@ -241,7 +251,7 @@ impl eframe::App for App {
                     // Credit this rando for creating the project
                     ui.label("Created by Nate, GPLv3 2022-2022");
                     // Add a link to the hub
-                    ui.add(github_link_file!("https://github.com/NateNoNameSOFT/rnes/", "(source code)"));
+                    ui.add(github_link_file!("https://github.com/NateNoNameSOFT/rnes/blob/main/", "(source code)"));
 
                     ui.separator();
 
