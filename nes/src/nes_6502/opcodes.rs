@@ -465,28 +465,63 @@ impl Nes6502 {
         0
     }
     /// exclusive or (with accumulator)
-    pub(super) fn eor(&self) -> u8 {
-        todo!()
+    pub(super) fn eor(&mut self) -> u8 {
+        self.fetch();
+
+        self.a = self.a ^ self.fetched;
+
+        self.set_flag(Flags6502::Z, self.a == 0x00);
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+
+        1
     }
     /// increment
-    pub(super) fn inc(&self) -> u8 {
-        todo!()
+    pub(super) fn inc(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = self.fetched as u16 + 1;
+        self.bus.write(self.addr_abs, temp as u8);
+        
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        0
     }
     /// increment X
-    pub(super) fn inx(&self) -> u8 {
-        todo!()
+    pub(super) fn inx(&mut self) -> u8 {
+        self.x += 1;
+        
+        self.set_flag(Flags6502::Z, self.x == 0x00);
+        self.set_flag(Flags6502::N, (self.x & 0x80) != 0);
+
+        0
     }
     /// increment Y
-    pub(super) fn iny(&self) -> u8 {
-        todo!()
+    pub(super) fn iny(&mut self) -> u8 {
+        self.y += 1;
+        
+        self.set_flag(Flags6502::Z, self.y == 0x00);
+        self.set_flag(Flags6502::N, (self.y & 0x80) != 0);
+
+        0
     }
     /// jump
-    pub(super) fn jmp(&self) -> u8 {
-        todo!()
+    pub(super) fn jmp(&mut self) -> u8 {
+        self.pc = self.addr_abs;
+        0
     }
     /// jump subroutine
-    pub(super) fn jsr(&self) -> u8 {
-        todo!()
+    pub(super) fn jsr(&mut self) -> u8 {
+        self.pc -= 1;
+
+        // write the program counter to the stack
+        self.bus.write(0x0100 + self.stkp as u16, (self.pc >> 8) as u8);
+        self.stkp -= 1;
+        self.bus.write(0x0100 + self.stkp as u16, self.pc as u8);
+        self.stkp -= 1;
+
+        self.pc = self.addr_abs;
+        0
     }
     /// load accumulator
     pub(super) fn lda(&mut self) -> u8 {
@@ -516,16 +551,38 @@ impl Nes6502 {
         1
     }
     /// logical shift right
-    pub(super) fn lsr(&self) -> u8 {
-        todo!()
+    pub(super) fn lsr(&mut self) -> u8 {
+        self.fetch();
+
+        self.set_flag(Flags6502::C, (self.fetched & 0x0001) != 0);
+        let temp = self.fetch() as u16 >> 1;
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
+            self.a = temp as u8;
+        } else {
+            self.bus.write(self.addr_abs, temp as u8);
+        }
+
+        0
     }
     /// no operation
     pub(super) fn nop(&self) -> u8 {
-        0
+        match self.opcode {
+            0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => 1,
+            _ => 0,
+        }
     }
     /// or with accumulator
-    pub(super) fn ora(&self) -> u8 {
-        todo!()
+    pub(super) fn ora(&mut self) -> u8 {
+        self.fetch();
+
+        self.a = self.a | self.fetched;
+        self.set_flag(Flags6502::Z, self.a == 0x00);
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+
+        1
     }
     /// push accumulator
     pub(super) fn pha(&mut self) -> u8 {
@@ -535,8 +592,15 @@ impl Nes6502 {
         0
     }
     /// push processor status (SR)
-    pub(super) fn php(&self) -> u8 {
-        todo!()
+    pub(super) fn php(&mut self) -> u8 {
+        self.bus.write(0x0100 + self.stkp as u16, self.status | Flags6502::B as u8 | Flags6502::U as u8);
+
+        self.set_flag(Flags6502::B, false);
+        self.set_flag(Flags6502::U, false);
+
+        self.stkp -= 1;
+
+        0
     }
     /// pull accumulator
     pub(super) fn pla(&mut self) -> u8{
@@ -547,16 +611,48 @@ impl Nes6502 {
         0
     }
     /// pull processor status (SR)
-    pub(super) fn plp(&self) -> u8 {
-        todo!()
+    pub(super) fn plp(&mut self) -> u8 {
+        self.stkp += 1;
+
+        self.status = self.bus.read(0x0100 + self.stkp as u16);
+
+        self.set_flag(Flags6502::U, true);
+
+        0
     }
     /// rotate left
-    pub(super) fn rol(&self) -> u8 {
-        todo!()
+    pub(super) fn rol(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = (self.fetched << 1) as u16 | self.get_flag(Flags6502::C) as u16;
+        self.set_flag(Flags6502::C, (temp & 0xFF00) != 0);
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x0000);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
+            self.a = temp as u8;
+        } else {
+            self.bus.write(self.addr_abs, temp as u8);
+        }
+
+        0
     }
     /// rotate right
-    pub(super) fn ror(&self) -> u8 {
-        todo!()
+    pub(super) fn ror(&mut self) -> u8 {
+        self.fetch();
+
+        let temp = (self.get_flag(Flags6502::C) << 7) as u16 | (self.fetched >> 1) as u16;
+        self.set_flag(Flags6502::C, (self.fetched & 0x01) != 0);
+        self.set_flag(Flags6502::Z, (temp & 0x00FF) == 0x00);
+        self.set_flag(Flags6502::N, (temp & 0x0080) != 0);
+
+        if self.lookup[self.opcode as usize].addrmode == AddressMode::Imp {
+            self.a = temp as u8;
+        } else {
+            self.bus.write(self.addr_abs, temp as u8);
+        }
+
+        0
     }
     /// return from interrupt
     /// Restores the state of the processor before the interrupt occured
@@ -574,8 +670,15 @@ impl Nes6502 {
         0
     }
     /// return from subroutine
-    pub(super) fn rts(&self) -> u8 {
-        todo!()
+    pub(super) fn rts(&mut self) -> u8 {
+        self.stkp += 1;
+        self.pc = self.bus.read(0x0100 + self.stkp as u16) as u16;
+        self.stkp += 1;
+        self.pc |= (self.bus.read(0x0100 + self.stkp as u16) as u16) << 8;
+        
+        self.pc += 1;
+
+        0
     }
     /// subtract with carry
     pub(super) fn sbc(&mut self) -> u8 {
@@ -597,16 +700,19 @@ impl Nes6502 {
         1
     }
     /// set carry
-    pub(super) fn sec(&self) -> u8 {
-        todo!()
+    pub(super) fn sec(&mut self) -> u8 {
+        self.set_flag(Flags6502::C, true);
+        0
     }
     /// set decimal
-    pub(super) fn sed(&self) -> u8 {
-        todo!()
+    pub(super) fn sed(&mut self) -> u8 {
+        self.set_flag(Flags6502::D, true);
+        0
     }
     /// set interrupt disable
-    pub(super) fn sei(&self) -> u8 {
-        todo!()
+    pub(super) fn sei(&mut self) -> u8 {
+        self.set_flag(Flags6502::I, true);
+        0
     }
     /// store accumulator
     pub(super) fn sta(&mut self) -> u8 {
@@ -627,28 +733,55 @@ impl Nes6502 {
         0
     }
     /// transfer accumulator to X
-    pub(super) fn tax(&self) -> u8 {
-        todo!()
+    pub(super) fn tax(&mut self) -> u8 {
+        self.x = self.a;
+
+        self.set_flag(Flags6502::Z, self.x == 0x00);
+        self.set_flag(Flags6502::N, (self.x & 0x80) != 0);
+
+        0
     }
     /// transfer accumulator to Y
-    pub(super) fn tay(&self) -> u8 {
-        todo!()
+    pub(super) fn tay(&mut self) -> u8 {
+        self.y = self.a;
+
+        self.set_flag(Flags6502::Z, self.y == 0x00);
+        self.set_flag(Flags6502::N, (self.y & 0x80) != 0);
+
+        0
     }
     /// transfer stack pointer to X
-    pub(super) fn tsx(&self) -> u8 {
-        todo!()
+    pub(super) fn tsx(&mut self) -> u8 {
+        self.x = self.stkp;
+
+        self.set_flag(Flags6502::Z, self.x == 0x00);
+        self.set_flag(Flags6502::N, (self.x & 0x80) != 0);
+
+        0
     }
     /// transfer X to accumulator
-    pub(super) fn txa(&self) -> u8 {
-        todo!()
+    pub(super) fn txa(&mut self) -> u8 {
+        self.a = self.x;
+
+        self.set_flag(Flags6502::Z, self.a == 0x00);
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+
+        0
     }
     /// transfer X to stack pointer
-    pub(super) fn txs(&self) -> u8 {
-        todo!()
+    pub(super) fn txs(&mut self) -> u8 {
+        self.stkp = self.x;
+
+        0
     }
     /// transfer Y to accumulator 
-    pub(super) fn tya(&self) -> u8 {
-        todo!()
+    pub(super) fn tya(&mut self) -> u8 {
+        self.a = self.y;
+
+        self.set_flag(Flags6502::Z, self.a == 0x00);
+        self.set_flag(Flags6502::N, (self.a & 0x80) != 0);
+
+        0
     }
     pub(super) fn xxx(&mut self) -> u8 {
         self.info.push(format!("{:02X}: Invalid Opcode at address {:04X}", self.opcode, self.addr_abs));
