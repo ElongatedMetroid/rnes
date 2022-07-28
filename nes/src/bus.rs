@@ -1,6 +1,22 @@
-use std::{ops::Range, rc::Rc, cell::RefCell};
-
 use crate::Nes2C02;
+
+pub trait CpuBusDevice {
+    // Communications with main bus
+
+    /// Read from main bus
+    fn cpu_read(&self, addr: u16, read_only: bool) -> u8;
+    /// Write to main bus
+    fn cpu_write(&mut self, addr: u16, data: u8);
+}
+
+pub trait PpuBusDevice {
+    // Communications with PPU bus
+
+    /// Read from ppu bus
+    fn ppu_read(&mut self, addr: u16, read_only: bool) -> u8;
+    /// Write to ppu bus
+    fn ppu_write(&mut self, addr: u16, data: u8);
+}
 
 /// Contains bus devices
 pub struct Bus {
@@ -31,6 +47,8 @@ impl Bus {
         
         if (0x0000..=0x1FFF).contains(&addr) {
             data = self.cpu_ram[(addr & 0x07FF) as usize];
+        } else if (0x2000..=0x3FFF).contains(&addr) {
+            data = self.ppu.cpu_read(addr & 0x0007, _read_only);
         }
 
         data
