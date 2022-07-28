@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, ops::RangeInclusive};
 
-use crate::bus::{Bus, MEM_SIZE};
+use crate::bus::Bus;
 
 use self::{addressing_modes::AddressMode, opcodes::Opcode};
 mod opcodes;
@@ -84,9 +84,6 @@ impl Default for Nes6502 {
 
 impl Nes6502 {
     pub fn new() -> Nes6502 {
-        let mut ram= [0; MEM_SIZE]; 
-        ram.iter_mut().for_each(|r| *r = 0x00);
-
         let mut nes = Nes6502 { 
             a: 0x00,
             x: 0x00,
@@ -102,9 +99,7 @@ impl Nes6502 {
             lookup: Vec::new(),
             info: Vec::new(),
 
-            bus: Bus {
-                ram
-            }   
+            bus: Bus::default(), 
         };
 
         nes.lookup = vec![
