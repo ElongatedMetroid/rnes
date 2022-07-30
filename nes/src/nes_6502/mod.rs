@@ -191,6 +191,7 @@ impl Nes6502 {
 
         self.cycles = 8;
     }
+    
     /// Interrupt Request - Executes an instruction at a specific location
     pub fn irq(&mut self) {
         // if interrupts are enabled

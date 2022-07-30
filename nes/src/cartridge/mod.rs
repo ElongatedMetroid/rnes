@@ -1,8 +1,11 @@
 use crate::bus::{PpuBusDevice, CpuBusDevice};
 
-struct Cartridge {
+pub struct Cartridge {
 
 }
+
+// The cartridge has access to both the ppu's bus and
+// the main bus.
 
 impl CpuBusDevice for Cartridge {
     fn cpu_read(&self, addr: u16, read_only: bool) -> u8 {

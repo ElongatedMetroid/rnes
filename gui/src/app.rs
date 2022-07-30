@@ -7,12 +7,7 @@ use eframe::{
 };
 
 use egui::{Color32, github_link_file};
-use nes::{Nes6502, Flags6502};
-
-/// NES's native output width
-const NES_WIDTH: f32 = 256.0;
-/// NES's native output height
-const NES_HEIGHT: f32 = 240.0;
+use nes::{Flags6502, Nes};
 
 /// Holds booleans for toggling on and off gui elements
 struct GuiToggles {
@@ -25,7 +20,7 @@ struct GuiToggles {
 /// Holds data related the the application, including the NES,
 /// map of assembly, and gui toggles
 pub struct App {
-    nes: Nes6502,
+    nes: Nes,
     map_asm: BTreeMap<u16, String>,
     viewable_ram_offset: u16,
     gui_toggles: GuiToggles,
@@ -35,7 +30,7 @@ pub struct App {
 impl Default for App {
     fn default() -> Self {
         let mut app = Self { 
-            nes: Nes6502::default(), 
+            nes: Nes::default(), 
             map_asm: BTreeMap::new(),
             viewable_ram_offset: 0x8000,
             gui_toggles: GuiToggles {
@@ -56,17 +51,17 @@ impl Default for App {
 
         // Load program
         let test_prog: Vec<u8> = vec![0xA2, 0x0A, 0x8E, 0x00, 0x00, 0xA2, 0x03, 0x8E, 0x01, 0x00, 0xAC, 0x00, 0x00, 0xA9, 0x00, 0x18, 0x6D, 0x01, 0x00, 0x88, 0xD0, 0xFA, 0x8D, 0x02, 0x00, 0xEA, 0xEA, 0xEA];
-        app.nes.bus.cpu_ram[0x8000..0x8000 + test_prog.len()].copy_from_slice(&test_prog);
+        app.nes.cpu.bus.cpu_ram[0x8000..0x8000 + test_prog.len()].copy_from_slice(&test_prog);
 
         // Set vectors
-        app.nes.bus.cpu_ram[0xFFFC] = 0x00;
-        app.nes.bus.cpu_ram[0xFFFD] = 0x80;
+        app.nes.cpu.bus.cpu_ram[0xFFFC] = 0x00;
+        app.nes.cpu.bus.cpu_ram[0xFFFD] = 0x80;
 
         // Put the disassembled code into the map
-        app.map_asm = app.nes.disassemble(0x4000..=0x8FFF);
+        app.map_asm = app.nes.cpu.disassemble(0x4000..=0x8FFF);
 
         // Put the NES into a known state
-        app.nes.reset();
+        app.nes.cpu.reset();
 
         // Return the instance of the app we created
         app
@@ -81,23 +76,23 @@ impl eframe::App for App {
         // Clock the CPU when space is pressed
         if ctx.input().key_pressed(Key::Space) {
             loop {
-                self.nes.clock();
-                if self.nes.complete() {
+                self.nes.cpu.clock();
+                if self.nes.cpu.complete() {
                     break;
                 }
             }
         }
 
         if ctx.input().key_pressed(Key::R) {
-            self.nes.reset();
+            self.nes.cpu.reset();
         }
 
         if ctx.input().key_pressed(Key::I) {
-            self.nes.irq();
+            self.nes.cpu.irq();
         }
 
         if ctx.input().key_pressed(Key::N) {
-            self.nes.nmi();
+            self.nes.cpu.nmi();
         }
 
         // The central panel will hold buttons to access debug options
@@ -147,7 +142,7 @@ impl eframe::App for App {
                 // loop 16 times (for each row)
                 for _ in 0..16 {
                     // Write the value of addr onto the end of the string
-                    write!(&mut str, " {:02X}", self.nes.bus.cpu_read(addr, true)).unwrap();
+                    write!(&mut str, " {:02X}", self.nes.cpu.bus.cpu_read(addr, true)).unwrap();
                     // Increment addr
                     addr += 1;
                 }
@@ -182,7 +177,7 @@ impl eframe::App for App {
                         let mut dump_file = match File::create("disassembly_dump.txt") {
                             Ok(v) => v,
                             Err(e) => {
-                                self.nes.info.push(format!("Could not create file: {}", e));
+                                self.nes.cpu.info.push(format!("Could not create file: {}", e));
                                 return;
                             }
                         };
@@ -193,10 +188,10 @@ impl eframe::App for App {
                     }
 
                     self.map_asm
-                        .range(self.nes.pc.saturating_sub(8)..)
+                        .range(self.nes.cpu.pc.saturating_sub(8)..)
                         .take(10)
                         .for_each(|(addr, str)| {
-                            ui.colored_label(if *addr == self.nes.pc {Color32::GREEN} else {Color32::WHITE}, str);
+                            ui.colored_label(if *addr == self.nes.cpu.pc {Color32::GREEN} else {Color32::WHITE}, str);
                         })
                 });
         }
@@ -207,22 +202,22 @@ impl eframe::App for App {
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.horizontal(|ui| {
-                        ui.colored_label(if self.nes.get_flag(Flags6502::N) == 1 {Color32::GREEN} else { Color32:: RED }, "N");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::V) == 1 {Color32::GREEN} else { Color32:: RED }, "V");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::U) == 1 {Color32::GREEN} else { Color32:: RED }, "-");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::B) == 1 {Color32::GREEN} else { Color32:: RED }, "B");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::D) == 1 {Color32::GREEN} else { Color32:: RED }, "D");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::I) == 1 {Color32::GREEN} else { Color32:: RED }, "I");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::Z) == 1 {Color32::GREEN} else { Color32:: RED }, "Z");
-                        ui.colored_label(if self.nes.get_flag(Flags6502::C) == 1 {Color32::GREEN} else { Color32:: RED }, "C");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::N) == 1 {Color32::GREEN} else { Color32:: RED }, "N");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::V) == 1 {Color32::GREEN} else { Color32:: RED }, "V");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::U) == 1 {Color32::GREEN} else { Color32:: RED }, "-");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::B) == 1 {Color32::GREEN} else { Color32:: RED }, "B");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::D) == 1 {Color32::GREEN} else { Color32:: RED }, "D");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::I) == 1 {Color32::GREEN} else { Color32:: RED }, "I");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::Z) == 1 {Color32::GREEN} else { Color32:: RED }, "Z");
+                        ui.colored_label(if self.nes.cpu.get_flag(Flags6502::C) == 1 {Color32::GREEN} else { Color32:: RED }, "C");
                     });
                     ui.separator();
                     ui.vertical(|ui| {
-                        ui.label(format!("PC: ${:04X}", self.nes.pc));
-                        ui.label(format!("A: ${:02X} [{:03}]", self.nes.a, self.nes.a));
-                        ui.label(format!("X: ${:02X} [{:03}]", self.nes.x, self.nes.x));
-                        ui.label(format!("Y: ${:02X} [{:03}]", self.nes.y, self.nes.y));
-                        ui.label(format!("Stack Ptr ${:04X}", self.nes.stkp));
+                        ui.label(format!("PC: ${:04X}", self.nes.cpu.pc));
+                        ui.label(format!("A: ${:02X} [{:03}]", self.nes.cpu.a, self.nes.cpu.a));
+                        ui.label(format!("X: ${:02X} [{:03}]", self.nes.cpu.x, self.nes.cpu.x));
+                        ui.label(format!("Y: ${:02X} [{:03}]", self.nes.cpu.y, self.nes.cpu.y));
+                        ui.label(format!("Stack Ptr ${:04X}", self.nes.cpu.stkp));
                     }) 
                 });
         }
@@ -236,12 +231,12 @@ impl eframe::App for App {
                         let mut dump_file = match File::create("info_dump.txt") {
                             Ok(v) => v,
                             Err(e) => { 
-                                self.nes.info.push(format!("Could not create file: {}", e));
+                                self.nes.cpu.info.push(format!("Could not create file: {}", e));
                                 return;
                             },
                         };
 
-                        for line in &self.nes.info {
+                        for line in &self.nes.cpu.info {
                             writeln!(dump_file, "{}", line.as_str()).unwrap();
                         }
                     }
@@ -255,7 +250,7 @@ impl eframe::App for App {
 
                     ui.separator();
 
-                    for info in &self.nes.info[self.nes.info.len().saturating_sub(10)..self.nes.info.len()] {
+                    for info in &self.nes.cpu.info[self.nes.cpu.info.len().saturating_sub(10)..self.nes.cpu.info.len()] {
                         ui.label(info);
                     }
                 });
