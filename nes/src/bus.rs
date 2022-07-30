@@ -1,8 +1,10 @@
 //! The bus will represent the core of the emulation;
-//! the bus will represent the NES itself.
+//! the bus will represent the NES itself. The bus structure
+//! /instance is held in the CPU
 
 use crate::Nes2C02;
 
+/// Trait for communicating with the main bus
 pub trait CpuBusDevice {
     // Communications with main bus
 
@@ -12,6 +14,7 @@ pub trait CpuBusDevice {
     fn cpu_write(&mut self, addr: u16, data: u8);
 }
 
+/// Trait for communicating with the ppu's bus
 pub trait PpuBusDevice {
     // Communications with PPU bus
 
