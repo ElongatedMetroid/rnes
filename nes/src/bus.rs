@@ -2,7 +2,9 @@
 //! the bus will represent the NES itself. The bus structure
 //! /instance is held in the CPU
 
-use crate::Nes2C02;
+use std::{rc::Rc};
+
+use crate::{Nes2C02, cartridge::Cartridge};
 
 /// Trait for communicating with the main bus
 pub trait CpuBusDevice {
@@ -27,9 +29,11 @@ pub trait PpuBusDevice {
 /// Contains bus devices
 pub struct Bus {
     /// Count how many times clock has been called
-    system_clock_counter: u32,
+    pub system_clock_counter: u32,
 
     pub cpu_ram: [u8; 2048],
+    
+    pub cart: Option<Rc<Cartridge>>, 
     pub ppu: Nes2C02,
 }
 
@@ -39,7 +43,8 @@ impl Default for Bus {
             system_clock_counter: 0,
 
             cpu_ram: [0; 2048],
-            ppu: Nes2C02 {},
+            cart: None,
+            ppu: Nes2C02::default(),
         };
 
         bus
