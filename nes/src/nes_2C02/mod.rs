@@ -1,4 +1,4 @@
-use std::{rc::Rc};
+use std::{rc::Rc, cell::RefCell};
 
 use crate::{bus::{CpuBusDevice, PpuBusDevice}, cartridge::Cartridge};
 
@@ -8,7 +8,7 @@ pub struct Nes2C02 {
     /// RAM
     table_palette: [u8; 32],
 
-    pub cart: Option<Rc<Cartridge>>,
+    pub cart: Option<Rc<RefCell<Cartridge>>>,
 }
 
 impl Default for Nes2C02 {
@@ -128,7 +128,7 @@ impl PpuBusDevice for Nes2C02 {
 }
 
 impl Nes2C02 {
-    pub fn connect_cartridge(&mut self, cartridge: Rc<Cartridge>) {
+    pub fn connect_cartridge(&mut self, cartridge: Rc<RefCell<Cartridge>>) {
         self.cart = Some(cartridge);
     }
 

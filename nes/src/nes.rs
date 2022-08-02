@@ -3,7 +3,7 @@
 //! and Bus struct, and since the Bus is contained in the CPU, CPU methods
 //! cannot be called from the Bus; the reason there in here
 
-use std::rc::Rc;
+use std::{rc::Rc, cell::RefCell};
 
 use crate::{cartridge::Cartridge, Nes6502};
 
@@ -21,7 +21,7 @@ impl Nes {
     // System interface
 
     /// Insert a cartridge
-    fn insert_cartridge(&mut self, cartridge: Rc<Cartridge>) {
+    fn insert_cartridge(&mut self, cartridge: Rc<RefCell<Cartridge>>) {
         self.cpu.bus.cart = Some(Rc::clone(&cartridge));
         self.cpu.bus.ppu.connect_cartridge(Rc::clone(&cartridge));
     }
