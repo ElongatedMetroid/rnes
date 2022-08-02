@@ -15,31 +15,18 @@ pub struct Cartridge {
 
 }
 
-// The cartridge has access to both the ppu's bus and
-// the main bus.
-
-impl CpuBusDevice for Cartridge {
-    fn cpu_read(&self, addr: u16, read_only: bool) -> u8 {
-        todo!()
-    }
-
-    fn cpu_write(&mut self, addr: u16, data: u8) {
-        todo!()
-    }
-}
-
-impl PpuBusDevice for Cartridge {
-    fn ppu_read(&mut self, addr: u16, read_only: bool) -> u8 {
-        todo!()
-    }
-
-    fn ppu_write(&mut self, addr: u16, data: u8) {
-        todo!()
-    }
-}
-
 impl Cartridge {
-    pub fn new(file_name: &str) -> Result<Cartridge, std::io::Error> {
+    pub fn new() -> Cartridge {
+        Cartridge {
+            prg_memory: Vec::new(),
+            chr_memory: Vec::new(),
+            mapper_id: 0,
+            prg_banks: 0,
+            chr_banks: 0,
+        }
+    }
+
+    fn initialize(&mut self, file_name: &str) -> Result<(), std::io::Error> {
         /// iNES format header
         #[derive(Debug)]
         struct Header {
@@ -53,18 +40,21 @@ impl Cartridge {
             tv_system2: u8,
         }
 
-        let file = File::open(file_name)?;
-        let mut buffer = BufReader::new(file);
-        // Stores the raw iNes header data
-        let mut ines_data: [u8; 16] = [0; 16];
-        // Read the iNes header into the array
-        buffer.read_exact(&mut ines_data).unwrap();
+        let mut file = File::open(file_name)?;
+        // Stores the raw iNes file data
+        let mut ines_data: Vec<u8> = Vec::new();
+        // Read the iNes file into the vector
+        file.read_to_end(&mut ines_data).unwrap();
+        // The file is no longer needed so we drop it early
+        drop(file);
 
         let mut name: [char; 4] = ['a'; 4];
+        // Extract name from ines_data
         for (i, byte) in ines_data[0..4].bytes().enumerate() {
             name[i] = byte.unwrap() as char;
         }
 
+        // Extract bytes from ines_data
         let prg_rom_chunks: u8 = ines_data[4];
         let chr_rom_chunks: u8 = ines_data[5];
         let mapper1: u8 = ines_data[6];
@@ -73,6 +63,7 @@ impl Cartridge {
         let tv_system1: u8 = ines_data[9];
         let tv_system2: u8 = ines_data[10];
 
+        // Store into a header structure
         let header = Header {
             name,
             prg_rom_chunks,
@@ -86,6 +77,59 @@ impl Cartridge {
 
         println!("{:#?}", header);
 
-        todo!()
+        let mut ines_data_byte_offset = 17;
+        if (header.mapper1 & 0x04) != 0 {
+            ines_data_byte_offset = 513;
+        }
+
+        // Determine Mapper ID
+        self.mapper_id = ((header.mapper2 >> 4) << 4) | (header.mapper1 >> 4);
+
+        // "Discover" file format
+        let file_type: u8 = 1;
+
+        if file_type == 0 {
+
+        }
+
+        if file_type == 1 {
+            // Read in how many banks of memory are in the ROM for the program memory
+            self.prg_banks = header.prg_rom_chunks;
+            // Resize program memory vector to that size
+            // A single bank of program memory is 16KB
+            self.prg_memory.resize(self.prg_banks as usize * 16384, 0);
+            // Read the data from the file into the vector
+            self.prg_memory = ines_data[ines_data_byte_offset..=self.prg_memory.len()].to_vec();
+
+            // Repeat for character memory
+
+            self.chr_banks = header.chr_rom_chunks;
+            self.chr_memory.resize(self.chr_banks as usize * 8192, 0);
+            self.chr_memory = ines_data[self.prg_memory.len() + 1..=self.chr_memory.len()].to_vec();
+        }
+
+        if file_type == 2 {
+
+        }
+
+        Ok(())
     }
+
+    pub fn handle_cpu_read(&self, addr: u16, read_only: bool) -> bool {
+        false
+    }
+    pub fn handle_cpu_write(&mut self, addr: u16, data: u8) -> bool {
+        false
+    }
+    pub fn handle_ppu_read(&mut self, addr: u16, read_only: bool) -> bool {
+        false
+    }
+    pub fn handle_ppu_write(&mut self, addr: u16, data: u8) -> bool {
+        false
+    }
+}
+
+#[test]
+fn ines_header() {
+    
 }
