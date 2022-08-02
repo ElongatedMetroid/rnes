@@ -1,8 +1,8 @@
-use std::{fs::File, io::{BufReader, Read}};
+use std::{fs::File, io::{BufReader, Read}, rc::Rc, cell::RefCell};
 
-use crate::bus::{PpuBusDevice, CpuBusDevice};
+use crate::{bus::{PpuBusDevice, CpuBusDevice}, Mapper, Mapper000};
 
-pub struct Cartridge {
+pub struct Cartridge<T: Mapper> {
     prg_memory: Vec<u8>,
     chr_memory: Vec<u8>,
 
@@ -13,16 +13,20 @@ pub struct Cartridge {
     /// How many chr banks there are
     chr_banks: u8,
 
+    mapper: Option<Rc<RefCell<T>>>
+
 }
 
-impl Cartridge {
-    pub fn new() -> Cartridge {
+impl<T> Cartridge<T> {
+    pub fn new() -> Cartridge<T> {
         Cartridge {
             prg_memory: Vec::new(),
             chr_memory: Vec::new(),
             mapper_id: 0,
             prg_banks: 0,
             chr_banks: 0,
+        
+            mapper: None,
         }
     }
 
@@ -112,6 +116,13 @@ impl Cartridge {
 
         }
 
+        // Load correct mapper
+        match self.mapper_id {
+            0 => self.mapper = Some(Rc::new(RefCell::new(Mapper000::new(self.prg_banks, self.chr_banks)))),
+            _ => (),
+        }
+
+
         Ok(())
     }
 
@@ -127,9 +138,4 @@ impl Cartridge {
     pub fn handle_ppu_write(&mut self, addr: u16, data: u8) -> bool {
         false
     }
-}
-
-#[test]
-fn ines_header() {
-    
 }

@@ -4,7 +4,7 @@
 
 use std::{rc::Rc, cell::RefCell};
 
-use crate::{Nes2C02, cartridge::Cartridge};
+use crate::{Nes2C02, cartridge::Cartridge, Mapper};
 
 /// Trait for communicating with the main bus
 pub trait CpuBusDevice {
@@ -27,17 +27,17 @@ pub trait PpuBusDevice {
 }
 
 /// Contains bus devices
-pub struct Bus {
+pub struct Bus<T: Mapper> {
     /// Count how many times clock has been called
     pub system_clock_counter: u32,
 
     pub cpu_ram: [u8; 2048],
     
-    pub cart: Option<Rc<RefCell<Cartridge>>>, 
+    pub cart: Option<Rc<RefCell<Cartridge<T>>>>, 
     pub ppu: Nes2C02,
 }
 
-impl Default for Bus {
+impl<T> Default for Bus<T> {
     fn default() -> Self {
         let bus = Self { 
             system_clock_counter: 0,
@@ -51,11 +51,11 @@ impl Default for Bus {
     }
 }
 
-impl Bus {
+impl<T> Bus<T> {
     // Bus read & write
 
     pub fn cpu_write(&mut self, addr: u16, data: u8) {
-        if self.cart.as_ref().unwrap().borrow_mut().handle_cpu_write(addr, data) {
+        if self.cart.as_mut().unwrap().borrow_mut().handle_cpu_write(addr, data) {
             // The cartrige sees alls and has the ability to veto
             // the propagation of the bus transaction if it requires
             // This allows the cartridge to map any address to some

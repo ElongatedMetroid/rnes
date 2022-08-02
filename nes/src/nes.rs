@@ -21,7 +21,7 @@ impl Nes {
     // System interface
 
     /// Insert a cartridge
-    fn insert_cartridge(&mut self, cartridge: Rc<RefCell<Cartridge>>) {
+    fn insert_cartridge<T>(&mut self, cartridge: Rc<RefCell<Cartridge<T>>>) {
         self.cpu.bus.cart = Some(Rc::clone(&cartridge));
         self.cpu.bus.ppu.connect_cartridge(Rc::clone(&cartridge));
     }
