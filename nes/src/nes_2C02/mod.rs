@@ -117,6 +117,10 @@ impl PpuBusDevice for Nes2C02 {
         // write to its bus past its addressable range
         addr &= 0x3FFF;
 
+        if self.cart.as_mut().unwrap().borrow_mut().handle_ppu_read(addr, false) {
+            
+        }
+
         data
     }
 
@@ -124,6 +128,10 @@ impl PpuBusDevice for Nes2C02 {
         // Mask address incase the ppu ever tries to 
         // write to its bus past its addressable range
         addr &= 0x3FFF;
+
+        if self.cart.as_mut().unwrap().borrow_mut().handle_cpu_write(addr, data) {
+
+        }
     }
 }
 
