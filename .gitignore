@@ -11,3 +11,8 @@ Cargo.lock
 
 # Obvious
 roms
+
+# Added by cargo
+
+/target
+.vscode
