@@ -1,19 +1,24 @@
+use std::fmt::Display;
+
+use enum_display_derive::Display;
+
+#[derive(Clone, Copy)]
 pub struct Opcode {
     name: OpcodeName,
     addressing_mode: AddressingMode,
 }
 
 impl Opcode {
-    fn name(&self) -> OpcodeName {
+    pub fn name(&self) -> OpcodeName {
         self.name
     }
-    fn addressing_mode(&self) -> AddressingMode {
+    pub fn addressing_mode(&self) -> AddressingMode {
         self.addressing_mode
     }
 }
 
 /// Names or acronyms of all the opcodes, copied from https://github.com/mre/mos6502/blob/master/src/instruction.rs
-#[derive(Clone, Copy)]
+#[derive(Display, Clone, Copy)]
 pub enum OpcodeName {
     ADC, // ADd with Carry................ | NV ...ZC A            = A + M + C
     AND, // logical AND (bitwise)......... | N. ...Z. A            = A && M
@@ -77,7 +82,7 @@ pub enum OpcodeName {
 }
 
 /// addressing modes, copied from https://github.com/mre/mos6502/blob/master/src/instruction.rs
-#[derive(Clone, Copy)]
+#[derive(Display, Clone, Copy)]
 pub enum AddressingMode {
     Accumulator,      // 1    LSR A        work directly on accumulator
     Implied,          // 1    BRK
